@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -16,16 +17,55 @@ import (
 // Context
 // defer
 // Difference between := and var
+// * & - what do these mean?
 
 type Config struct {
 	Port string
 	Host string
 }
 
+type Page struct {
+	Title string
+	Body  *template.Template
+}
+
+func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
+	tm := time.Now().Format(time.RFC1123)
+	w.Write([]byte("Pong at: " + tm))
+}
+
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/index.html")
+	if err != nil {
+		http.Error(w, "Error parsing template", http.StatusInternalServerError)
+		log.Println("Template parsing error:", err)
+		return
+	}
+
+	data := struct {
+		Title   string
+		Message string
+	}{
+		Title:   "Welcome Page",
+		Message: "Hello, Go Templates!",
+	}
+
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error executing template", http.StatusInternalServerError)
+		log.Println("Template execution error:", err)
+	}
+}
+
+func addRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/health", handleHealthCheck)
+	mux.HandleFunc("/", handleRoot)
+}
+
 func ServerInstance() http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
-
+	addRoutes(mux)
 	return handler
 }
 
