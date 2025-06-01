@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}}</title>
+    <script>
+        window.onload = function () {
+            const params = new URLSearchParams(window.location.search);
+            fetch('/oauth', {
+                method: 'POST',
+                headers: {
+                    'X-Code': params.get('code'),
+                }
+            })
+                .then(async response => {
+                    console.log(response);
+                    if (!response.ok) {
+                        throw new Error('Request failed');
+                    }
+                    window.opener.postMessage('reload');
+                    window.close()
+                })
+                .catch(err => {
+                    // Something went wrong here
+                    document.getElementById('fatal-error').style.display = 'block';
+                })
+
+        }
+    </script>
+</head>
+<body>
+This is the auth page
+
+<div id="fatal-error" style="display: none">
+    Something went wrong.
+    (retry logic here)
+</div>
+</body>
+</html>

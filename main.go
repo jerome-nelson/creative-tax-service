@@ -1,16 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 //ToStudy
@@ -18,75 +23,246 @@ import (
 // defer
 // Difference between := and var
 // * & - what do these mean?
+// get used to writing anon functions
+// What is a rune?
 
 type Config struct {
-	Port string
-	Host string
+	Port        string
+	Host        string
+	Cid         string
+	Csecrt      string
+	OauthUrl    string
+	ServiceName string
 }
 
 type Page struct {
-	Title string
-	Body  *template.Template
+	Title   string
+	Message string
 }
 
-func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	tm := time.Now().Format(time.RFC1123)
-	w.Write([]byte("Pong at: " + tm))
+type Oauth struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	Scope       string `json:"scope"`
+	ExpiresIn   int    `json:"expires_in"`
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/index.html")
-	if err != nil {
-		http.Error(w, "Error parsing template", http.StatusInternalServerError)
-		log.Println("Template parsing error:", err)
-		return
-	}
+func methodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.HandlerFunc {
+	log.Println("Called something")
+	return func(method string, h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != method {
+				log.Printf("method %s attempted on %s\n", r.Method, r.URL.Path)
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
 
-	data := struct {
-		Title   string
-		Message string
-	}{
-		Title:   "Welcome Page",
-		Message: "Hello, Go Templates!",
-	}
-
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, "Error executing template", http.StatusInternalServerError)
-		log.Println("Template execution error:", err)
+			h(w, r)
+		}
 	}
 }
 
-func addRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/health", handleHealthCheck)
-	mux.HandleFunc("/", handleRoot)
+func encode[T any](w http.ResponseWriter, _ *http.Request, status int, v T) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		return fmt.Errorf("encode json: %w", err)
+	}
+	return nil
 }
 
-func ServerInstance() http.Handler {
+// GET
+func handleHealthCheck(log *log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tm := time.Now().Format(time.RFC1123)
+		data := map[string]any{
+			"result": "Pong at " + tm,
+		}
+
+		if err := encode(w, r, http.StatusOK, data); err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			log.Println(err)
+		}
+	}
+}
+
+// GET
+func handleAuth(log *log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		tmpl, err := template.ParseFiles("templates/auth.html")
+		if err != nil {
+			http.Error(w, "Error parsing template", http.StatusInternalServerError)
+			log.Println("Template parsing error:", err)
+			return
+		}
+
+		data := Page{
+			Title:   "Auth Page",
+			Message: "This is the auth page. You will be redirected back to home",
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			http.Error(w, "Error executing template", http.StatusInternalServerError)
+			log.Println("Template execution error:", err)
+		}
+	}
+
+}
+
+// POST, OPTIONS
+func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		code := r.Header.Get("X-Code")
+		if code == "" {
+			http.Error(w, "Missing X-Code", http.StatusBadRequest)
+		}
+		values := map[string]string{
+			"grant_type":    "authorization_code",
+			"code":          code,
+			"client_id":     config.Cid,
+			"client_secret": config.Csecrt,
+			"redirect_uri":  config.Host + ":" + config.Port + "/auth",
+		}
+
+		jsonValue, _ := json.Marshal(values)
+		oauth, err := http.Post(
+			config.OauthUrl,
+			"application/json",
+			bytes.NewBuffer(jsonValue),
+		)
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Println("Error closing body:", err)
+			}
+		}(oauth.Body)
+
+		if oauth != nil {
+			if oauth.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(oauth.Body)
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println(string(body))
+				return
+			}
+
+			res := Oauth{}
+			err := json.NewDecoder(oauth.Body).Decode(&res)
+			if err != nil {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("Error retrieving oauth:", err)
+				return
+			}
+
+			if res.AccessToken == "" {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("Error retrieving oauth - JSON is empty")
+			}
+
+			cookie := http.Cookie{
+				Name:     "oauth_token",
+				Value:    res.AccessToken,
+				Path:     "/",
+				MaxAge:   res.ExpiresIn,
+				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			}
+			http.SetCookie(w, &cookie)
+			if err := encode(w, r, http.StatusOK, map[string]string{
+				"scope": res.Scope,
+				"type":  res.TokenType,
+			}); err != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				log.Println(err)
+			}
+		}
+
+		if err != nil {
+			http.Error(w, "Error retrieving authentication", http.StatusInternalServerError)
+			log.Println("Error retrieving oauth:", err)
+			return
+		}
+	}
+
+}
+
+// GET
+func handleRoot(log *log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		data := Page{
+			Title: "Creative Tax Generator",
+		}
+
+		tmpl, err := template.ParseFiles("templates/index.html")
+		if err != nil {
+			http.Error(w, "Error parsing template", http.StatusInternalServerError)
+			log.Println("root template error", err)
+			return
+		}
+
+		if err = tmpl.Execute(w, data); err != nil {
+			http.Error(w, "Error executing template", http.StatusInternalServerError)
+			log.Println("error applying template", err)
+		}
+	}
+}
+
+func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
+
+	allowMethod := methodGuard(log)
+
+	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
+	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
+	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config)))
+	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log)))
+}
+
+func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
-	addRoutes(mux)
+	addRoutes(mux, config, log)
 	return handler
 }
 
+func GetConfig(log *log.Logger) *Config {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading env variables")
+	}
+	return &Config{
+		Port:        os.Getenv("PORT"),
+		Host:        os.Getenv("HOST"),
+		OauthUrl:    os.Getenv("OAUTH_URL"),
+		Cid:         os.Getenv("CLIENT_ID"),
+		Csecrt:      os.Getenv("CLIENT_SECRET"),
+		ServiceName: os.Getenv("SERVICE_NAME"),
+	}
+}
+
 func run(ctx context.Context) error {
+
+	// Look into hoisting these higher?
+	logger := log.New(os.Stdout, "jira-auth: ", log.Lmsgprefix)
+	config := GetConfig(logger)
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	config := &Config{
-		Port: "5000",
-		Host: "localhost",
-	}
-	srv := ServerInstance()
+	srv := ServerInstance(config, logger)
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort(config.Host, config.Port),
 		Handler: srv,
 	}
 
 	go func() {
-		log.Printf("listening on %s\n", httpServer.Addr)
+		logger.Printf("service started - %s\n", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
+			_, err := fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
+			if err != nil {
+				return
+			}
 		}
 	}()
 
@@ -99,7 +275,10 @@ func run(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10*time.Second)
 		defer cancel()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			fmt.Fprintf(os.Stderr, "error shutting down http server: %s\n", err)
+			_, err := fmt.Fprintf(os.Stderr, "error shutting down http server: %s\n", err)
+			if err != nil {
+				return
+			}
 		}
 	}()
 	wg.Wait()
@@ -109,7 +288,10 @@ func run(ctx context.Context) error {
 func main() {
 	ctx := context.Background()
 	if err := run(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
+		_, err := fmt.Fprintf(os.Stderr, "%s\n", err)
+		if err != nil {
+			return
+		}
 		os.Exit(1)
 	}
 }
