@@ -5,14 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Title}}</title>
     <script>
-        function triggerJira(url) {
-           const popup = window.open(url, '_blank', 'popup=true&height=500&width=300')
+        window.addEventListener('load', () => {
+            if (!!localStorage.getItem("authToken")) {
+                document.getElementById("logout").style.display = "block";
+                document.getElementById("authed").style.display = "block";
+                document.getElementById("default").style.display = "none";
+                document.getElementById("login").style.display = "none";
+            }
+
+            // const token = should fetch cookie
+            // if (token) {
+            //     fetch(`https://api.atlassian.com/oauth/token/accessible-resources`, { method: 'GET', headers: { "Content-Type": "Accept: application/json", Authorization: `Bearer ${token}` } })
+            //     .then(async res => {
+            //         const test = await res.json();
+            //         console.log("Test: ", test);
+            //     })
+            //
+            // }
+        });
+
+        window.addEventListener('message', event => {
+            if (event.data === 'reload') {
+                window.location.reload();
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.reload();
         }
-        co
+        async function triggerJira() {
+
+            let params = `status=no,location=no,toolbar=no,menubar=no,
+width=600,height=800,popup=yes`;
+            window.open("{{.Message}}", '_blank', params);
+        }
     </script>
+    <style>
+        #logout {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-<button onclick="triggerJira('https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id=dicytnnqUPWVio6UhlYCPRUCe07GILbY&scope=read%3Ame&redirect_uri=http%3A%2F%2Flocalhost%3A5000&response_type=code&prompt=consent')">Login with Jira</button>
-OI asdasd asdasd asd
+
+<div id="authed" style="display: none">
+    Logged in
+</div>
+
+<!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
+<button id="login" onclick="triggerJira()">Login with Jira</button>
+<button id="logout" onclick="logout()">Logout</button>
 </body>
 </html>

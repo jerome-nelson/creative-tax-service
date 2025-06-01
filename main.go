@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ type Config struct {
 	Csecrt      string
 	OauthUrl    string
 	ServiceName string
+	RedirectUrl string
 }
 
 type Page struct {
@@ -48,7 +50,7 @@ type Oauth struct {
 }
 
 func methodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.HandlerFunc {
-	log.Println("Called something")
+	log.Println("methodGuard init")
 	return func(method string, h http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != method {
@@ -122,7 +124,7 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 			"code":          code,
 			"client_id":     config.Cid,
 			"client_secret": config.Csecrt,
-			"redirect_uri":  config.Host + ":" + config.Port + "/auth",
+			"redirect_uri":  config.RedirectUrl,
 		}
 
 		jsonValue, _ := json.Marshal(values)
@@ -189,10 +191,12 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 }
 
 // GET
-func handleRoot(log *log.Logger) http.HandlerFunc {
+func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
+		encodedURL := url.QueryEscape(config.RedirectUrl)
 		data := Page{
-			Title: "Creative Tax Generator",
+			Title:   "Creative Tax Generator",
+			Message: "https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id=" + config.Cid + "&scope=read%3Ame&redirect_uri=" + encodedURL + "&response_type=code&prompt=consent",
 		}
 
 		tmpl, err := template.ParseFiles("templates/index.html")
@@ -216,7 +220,7 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config)))
-	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log)))
+	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
 }
 
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
@@ -238,6 +242,7 @@ func GetConfig(log *log.Logger) *Config {
 		Cid:         os.Getenv("CLIENT_ID"),
 		Csecrt:      os.Getenv("CLIENT_SECRET"),
 		ServiceName: os.Getenv("SERVICE_NAME"),
+		RedirectUrl: "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/auth",
 	}
 }
 

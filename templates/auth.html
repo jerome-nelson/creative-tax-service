@@ -20,7 +20,7 @@
                     window.opener.postMessage('reload');
                     window.close()
                 })
-                .catch(err => {
+                .catch(_ => {
                     // Something went wrong here
                     document.getElementById('fatal-error').style.display = 'block';
                 })
