@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Title}}</title>
     <script>
-        window.addEventListener('load', () => {
-            if (isAuthed()) {
-                document.getElementById("logout").style.display = "block";
-                document.getElementById("authed").style.display = "block";
-                document.getElementById("login").style.display = "none";
+        const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry'];
+        const COOKIES = getCookies();
+        window.addEventListener('load', async () => {
+
+            if (!!COOKIES?.oauth_token) {
+                monitorAuthTime();
+                await setAuth();
+
             }
 
             // Prevents FOUCs
@@ -22,35 +25,108 @@
             }
         });
 
+        async function setAuth() {
+            const { name, picture } = await fetchUser();
+
+            document.getElementById("logout").style.display = "block";
+            document.getElementById("authed").innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/> Welcome! ${name}`;
+            document.getElementById("authed").style.display = "block";
+            document.getElementById("login").style.display = "none";
+        }
+
+        function deleteCookie(name) {
+            console.log("Deleting cookie: ", name);
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        }
+
         function logout() {
-            localStorage.removeItem('authToken');
+            COOKIE_LIST.forEach(deleteCookie);
             window.location.reload();
         }
         async function triggerJira() {
-
             let params = `status=no,location=no,toolbar=no,menubar=no,
 width=600,height=800,popup=yes`;
             window.open("{{.Message}}", '_blank', params);
         }
 
-        function isAuthed() {
+        function getCookies() {
             const cookies = document.cookie.split(';');
-            return cookies.filter(cookieStr => {
+            return cookies.reduce((acc, cookieStr) => {
                 const [key, val] = cookieStr.split('=');
-                return key === 'oauth_token';
-            }).length === 1;
+                const findKey = key.toLowerCase().trim();
+                if (COOKIE_LIST.includes(findKey)) {
+                    return {
+                        ...acc,
+                        [findKey]: val
+                    }
+                }
+                return acc;
+            }, {});
         }
 
-        // Check expiry - maybe
+        function monitorAuthTime() {
+            const expires = new Date(COOKIES.expiry);
+
+            setInterval(() => {
+                const now = new Date();
+                const diffMs = expires - now;
+                let countDown = Math.floor(diffMs / 1000);
+                const hrs = Math.floor(countDown / 3600);
+                const mins = Math.floor((countDown % 3600) / 60);
+                const secs = countDown % 60;
+                document.getElementById("time-left").innerHTML = [
+                    hrs.toString().padStart(2, '0'),
+                    mins.toString().padStart(2, '0'),
+                    secs.toString().padStart(2, '0')
+                ].join(':');
+
+                if (document.getElementById("reauth-required").style.display === 'none') {
+                    document.getElementById("reauth-required").style.display = "block";
+                }
+
+                if (countDown <= 0) {
+                    clearInterval(monitorAuthTime);
+                    logout()
+                }
+            }, 1000)
+
+        }
+
+        async function fetchUser() {
+            try {
+                const response = await fetch(`https://api.atlassian.com/me`, {
+                    headers: {
+                        Authorization: `Bearer ${COOKIES.oauth_token}`
+                    }
+                });
+
+                return await response.json();
+            } catch (e) {
+                console.error('Error fetching user: ', e);
+            }
+        }
+
         // Figure out scope
     </script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+        #reauth-required {
+            text-align: center;
+            padding: 10px;
+            border-bottom: solid 1px #000;
+        }
+    </style>
 </head>
 <body>
 
 <div id="auth-container" style="display: none">
-    <div id="authed" style="display: none">
-        Logged in
+    <div id="reauth-required" style="display: none">
+        Session will close after: <span id="time-left"></span>
     </div>
+    <div id="authed" style="display: none"></div>
 
     <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
     <button id="login" onclick="triggerJira()">Login with Jira</button>

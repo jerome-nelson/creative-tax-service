@@ -181,16 +181,39 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 				log.Println("Error retrieving oauth - JSON is empty")
 			}
 
-			cookie := http.Cookie{
+			offsetExpiry := res.ExpiresIn - 60
+
+			http.SetCookie(w, &http.Cookie{
 				Name:     "oauth_token",
 				Value:    res.AccessToken,
 				Path:     "/",
-				MaxAge:   res.ExpiresIn,
+				MaxAge:   offsetExpiry,
 				HttpOnly: false,
 				Secure:   true,
 				SameSite: http.SameSiteLaxMode,
-			}
-			http.SetCookie(w, &cookie)
+			})
+			http.SetCookie(w, &http.Cookie{
+				Name:     "scopes",
+				Value:    res.Scope,
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			now := time.Now().UTC()
+			futureTime := now.Add(time.Duration(offsetExpiry) * time.Second)
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "expiry",
+				Value:    futureTime.Format("2006-01-02T15:04:05.000Z"),
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
 			if err := encode(w, r, http.StatusOK, map[string]string{
 				"scope": res.Scope,
 				"type":  res.TokenType,
