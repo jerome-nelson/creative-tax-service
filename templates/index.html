@@ -6,22 +6,14 @@
     <title>{{.Title}}</title>
     <script>
         window.addEventListener('load', () => {
-            if (!!localStorage.getItem("authToken")) {
+            if (isAuthed()) {
                 document.getElementById("logout").style.display = "block";
                 document.getElementById("authed").style.display = "block";
-                document.getElementById("default").style.display = "none";
                 document.getElementById("login").style.display = "none";
             }
 
-            // const token = should fetch cookie
-            // if (token) {
-            //     fetch(`https://api.atlassian.com/oauth/token/accessible-resources`, { method: 'GET', headers: { "Content-Type": "Accept: application/json", Authorization: `Bearer ${token}` } })
-            //     .then(async res => {
-            //         const test = await res.json();
-            //         console.log("Test: ", test);
-            //     })
-            //
-            // }
+            // Prevents FOUCs
+            document.getElementById("auth-container").style.display = "block";
         });
 
         window.addEventListener('message', event => {
@@ -40,21 +32,29 @@
 width=600,height=800,popup=yes`;
             window.open("{{.Message}}", '_blank', params);
         }
-    </script>
-    <style>
-        #logout {
-            display: none;
+
+        function isAuthed() {
+            const cookies = document.cookie.split(';');
+            return cookies.filter(cookieStr => {
+                const [key, val] = cookieStr.split('=');
+                return key === 'oauth_token';
+            }).length === 1;
         }
-    </style>
+
+        // Check expiry - maybe
+        // Figure out scope
+    </script>
 </head>
 <body>
 
-<div id="authed" style="display: none">
-    Logged in
-</div>
+<div id="auth-container" style="display: none">
+    <div id="authed" style="display: none">
+        Logged in
+    </div>
 
-<!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
-<button id="login" onclick="triggerJira()">Login with Jira</button>
-<button id="logout" onclick="logout()">Logout</button>
+    <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
+    <button id="login" onclick="triggerJira()">Login with Jira</button>
+    <button id="logout" style="display: none" onclick="logout()">Logout</button>
+</div>
 </body>
 </html>

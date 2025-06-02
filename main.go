@@ -49,6 +49,27 @@ type Oauth struct {
 	ExpiresIn   int    `json:"expires_in"`
 }
 
+func authGuard(log *log.Logger) func(h http.HandlerFunc) http.HandlerFunc {
+	log.Println("authGuard init")
+	return func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			var isAuthed bool = false
+			for _, cookie := range r.Cookies() {
+				if cookie.Name == "oauth_token" {
+					isAuthed = true
+				}
+			}
+			if isAuthed != true {
+				log.Printf("attempted to access auth route %s\n", r.URL.Path)
+				http.Error(w, "Not authorised", http.StatusUnauthorized)
+				return
+			}
+
+			h(w, r)
+		}
+	}
+}
+
 func methodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.HandlerFunc {
 	log.Println("methodGuard init")
 	return func(method string, h http.HandlerFunc) http.HandlerFunc {
@@ -73,7 +94,6 @@ func encode[T any](w http.ResponseWriter, _ *http.Request, status int, v T) erro
 	return nil
 }
 
-// GET
 func handleHealthCheck(log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tm := time.Now().Format(time.RFC1123)
@@ -88,7 +108,6 @@ func handleHealthCheck(log *log.Logger) http.HandlerFunc {
 	}
 }
 
-// GET
 func handleAuth(log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		tmpl, err := template.ParseFiles("templates/auth.html")
@@ -112,7 +131,7 @@ func handleAuth(log *log.Logger) http.HandlerFunc {
 
 }
 
-// POST, OPTIONS
+// OPTIONS
 func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.Header.Get("X-Code")
@@ -167,7 +186,7 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 				Value:    res.AccessToken,
 				Path:     "/",
 				MaxAge:   res.ExpiresIn,
-				HttpOnly: true,
+				HttpOnly: false,
 				Secure:   true,
 				SameSite: http.SameSiteLaxMode,
 			}
@@ -190,7 +209,6 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 
 }
 
-// GET
 func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		encodedURL := url.QueryEscape(config.RedirectUrl)
@@ -216,6 +234,7 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := methodGuard(log)
+	//hasAuth := authGuard(log)
 
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
