@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,6 +48,8 @@ type Oauth struct {
 	TokenType   string `json:"token_type"`
 	Scope       string `json:"scope"`
 	ExpiresIn   int    `json:"expires_in"`
+	// Requires the scope `offline_access` to be set
+	RefreshToken string `json:"refresh_token"`
 }
 
 func authGuard(log *log.Logger) func(h http.HandlerFunc) http.HandlerFunc {
@@ -202,6 +205,128 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 				SameSite: http.SameSiteLaxMode,
 			})
 
+			http.SetCookie(w, &http.Cookie{
+				Name:     "refresh_token",
+				Value:    res.RefreshToken,
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			now := time.Now().UTC()
+			futureTime := now.Add(time.Duration(offsetExpiry) * time.Second)
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "expiry",
+				Value:    futureTime.Format("2006-01-02T15:04:05.000Z"),
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			if err := encode(w, r, http.StatusOK, map[string]string{
+				"scope": res.Scope,
+				"type":  res.TokenType,
+			}); err != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				log.Println(err)
+			}
+		}
+
+		if err != nil {
+			http.Error(w, "Error retrieving authentication", http.StatusInternalServerError)
+			log.Println("Error retrieving oauth:", err)
+			return
+		}
+	}
+
+}
+
+// TODO: Refactor both JIRA auth calls to combine the setCookie Logic and calls
+func handleRefreshToken(log *log.Logger, config *Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var token string
+		if token = r.Header.Get("x-refresh"); token == "" {
+			http.Error(w, "Unauthorised", http.StatusUnauthorized)
+		}
+
+		values := map[string]string{
+			"grant_type":    "refresh_token",
+			"refresh_token": token,
+			"client_id":     config.Cid,
+			"client_secret": config.Csecrt,
+		}
+
+		jsonValue, _ := json.Marshal(values)
+		oauth, err := http.Post(
+			config.OauthUrl,
+			"application/json",
+			bytes.NewBuffer(jsonValue),
+		)
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Println("Error closing body:", err)
+			}
+		}(oauth.Body)
+
+		if oauth != nil {
+			if oauth.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(oauth.Body)
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println(string(body))
+				return
+			}
+
+			res := Oauth{}
+			err := json.NewDecoder(oauth.Body).Decode(&res)
+			if err != nil {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("failed to retrieve refresh: ", err)
+				return
+			}
+
+			if res.AccessToken == "" {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("failed to retrieve refresh - JSON is empty")
+			}
+
+			offsetExpiry := res.ExpiresIn - 60
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "oauth_token",
+				Value:    res.AccessToken,
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "scopes",
+				Value:    res.Scope,
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "refresh_token",
+				Value:    res.RefreshToken,
+				Path:     "/",
+				MaxAge:   offsetExpiry,
+				HttpOnly: false,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
 			now := time.Now().UTC()
 			futureTime := now.Add(time.Duration(offsetExpiry) * time.Second)
 
@@ -234,12 +359,19 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 
 func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		encodedURL := url.QueryEscape(config.RedirectUrl)
-		data := Page{
-			Title:   "Creative Tax Generator",
-			Message: "https://auth.atlassian.com/authorize?audience=api.atlassian.com&client_id=" + config.Cid + "&scope=read%3Ame&redirect_uri=" + encodedURL + "&response_type=code&prompt=consent",
-		}
+		scopes := []string{"offline_access", "read:me"}
+		scopeParam := strings.Join(scopes, " ")
+		encodedScopes := url.QueryEscape(scopeParam)
+		encodedRedirectURL := url.QueryEscape(config.RedirectUrl)
 
+		data := Page{
+			Title: "Creative Tax Generator",
+			Message: "https://auth.atlassian.com/authorize?audience=api.atlassian.com" +
+				"&client_id=" + config.Cid +
+				"&scope=" + encodedScopes +
+				"&redirect_uri=" + encodedRedirectURL +
+				"&response_type=code&prompt=consent",
+		}
 		tmpl, err := template.ParseFiles("templates/index.html")
 		if err != nil {
 			http.Error(w, "Error parsing template", http.StatusInternalServerError)
@@ -261,6 +393,7 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
+	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config)))
 	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
 }

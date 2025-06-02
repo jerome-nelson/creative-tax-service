@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{.Title}}</title>
     <script>
-        const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry'];
+        const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
         const COOKIES = getCookies();
         window.addEventListener('load', async () => {
 
@@ -35,6 +35,7 @@
         }
 
         function deleteCookie(name) {
+            // DEV
             console.log("Deleting cookie: ", name);
             document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         }
@@ -42,6 +43,23 @@
         function logout() {
             COOKIE_LIST.forEach(deleteCookie);
             window.location.reload();
+        }
+
+        async function refreshSession() {
+            try {
+                const response = await fetch(`/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                const refreshCount = Number(localStorage.getItem('refresh_token')) ?? 0;
+                localStorage.setItem('refresh_token', refreshCount + 1);
+
+                window.location.reload();
+            } catch (e) {
+                // ERROR LOG
+                console.error('Error fetching refresh: ', e);
+                window.location.reload();
+            }
         }
         async function triggerJira() {
             let params = `status=no,location=no,toolbar=no,menubar=no,
@@ -66,8 +84,11 @@ width=600,height=800,popup=yes`;
 
         function monitorAuthTime() {
             const expires = new Date(COOKIES.expiry);
+            const refreshCount = localStorage.getItem('refresh_token');
 
-            setInterval(() => {
+            document.getElementById('refresh-token').innerHTML = `${refreshCount}`;
+
+            const checkingAuthTime = setInterval(async () => {
                 const now = new Date();
                 const diffMs = expires - now;
                 let countDown = Math.floor(diffMs / 1000);
@@ -84,9 +105,9 @@ width=600,height=800,popup=yes`;
                     document.getElementById("reauth-required").style.display = "block";
                 }
 
-                if (countDown <= 0) {
-                    clearInterval(monitorAuthTime);
-                    logout()
+                if (countDown <= 10) {
+                    clearInterval(checkingAuthTime);
+                    await refreshSession();
                 }
             }, 1000)
 
@@ -102,6 +123,7 @@ width=600,height=800,popup=yes`;
 
                 return await response.json();
             } catch (e) {
+                // ERROR LOG
                 console.error('Error fetching user: ', e);
             }
         }
@@ -123,9 +145,12 @@ width=600,height=800,popup=yes`;
 <body>
 
 <div id="auth-container" style="display: none">
+    <!--  DEV -->
     <div id="reauth-required" style="display: none">
-        Session will close after: <span id="time-left"></span>
+        Cookies will expire in: <span id="time-left"></span> <br />
+        Session refreshed: <span id="refresh-token"></span>
     </div>
+    <!--    End of DEV -->
     <div id="authed" style="display: none"></div>
 
     <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
