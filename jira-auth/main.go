@@ -6,14 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -36,11 +33,6 @@ type Config struct {
 	OauthUrl    string
 	ServiceName string
 	RedirectUrl string
-}
-
-type Page struct {
-	Title   string
-	Message string
 }
 
 type Oauth struct {
@@ -109,29 +101,6 @@ func handleHealthCheck(log *log.Logger) http.HandlerFunc {
 			log.Println(err)
 		}
 	}
-}
-
-func handleAuth(log *log.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		tmpl, err := template.ParseFiles("templates/auth.html")
-		if err != nil {
-			http.Error(w, "Error parsing template", http.StatusInternalServerError)
-			log.Println("Template parsing error:", err)
-			return
-		}
-
-		data := Page{
-			Title:   "Auth Page",
-			Message: "This is the auth page. You will be redirected back to home",
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			http.Error(w, "Error executing template", http.StatusInternalServerError)
-			log.Println("Template execution error:", err)
-		}
-	}
-
 }
 
 // OPTIONS
@@ -357,45 +326,14 @@ func handleRefreshToken(log *log.Logger, config *Config) http.HandlerFunc {
 
 }
 
-func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		scopes := []string{"offline_access", "read:me"}
-		scopeParam := strings.Join(scopes, " ")
-		encodedScopes := url.QueryEscape(scopeParam)
-		encodedRedirectURL := url.QueryEscape(config.RedirectUrl)
-
-		data := Page{
-			Title: "Creative Tax Generator",
-			Message: "https://auth.atlassian.com/authorize?audience=api.atlassian.com" +
-				"&client_id=" + config.Cid +
-				"&scope=" + encodedScopes +
-				"&redirect_uri=" + encodedRedirectURL +
-				"&response_type=code&prompt=consent",
-		}
-		tmpl, err := template.ParseFiles("templates/index.html")
-		if err != nil {
-			http.Error(w, "Error parsing template", http.StatusInternalServerError)
-			log.Println("root template error", err)
-			return
-		}
-
-		if err = tmpl.Execute(w, data); err != nil {
-			http.Error(w, "Error executing template", http.StatusInternalServerError)
-			log.Println("error applying template", err)
-		}
-	}
-}
-
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := methodGuard(log)
 	//hasAuth := authGuard(log)
 
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
-	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
 	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config)))
-	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
 }
 
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
@@ -405,8 +343,8 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	return handler
 }
 
-func GetConfig(log *log.Logger) *Config {
-	err := godotenv.Load()
+func GetConfig() *Config {
+	err := godotenv.Load("jira-auth.env")
 	if err != nil {
 		log.Fatal("Error loading env variables")
 	}
@@ -423,9 +361,8 @@ func GetConfig(log *log.Logger) *Config {
 
 func run(ctx context.Context) error {
 
-	// Look into hoisting these higher?
-	logger := log.New(os.Stdout, "jira-auth: ", log.Lmsgprefix)
-	config := GetConfig(logger)
+	config := GetConfig()
+	logger := log.New(os.Stdout, config.ServiceName+": ", log.Lmsgprefix)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

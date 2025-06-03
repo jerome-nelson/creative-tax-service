@@ -8,13 +8,10 @@
         const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
         const COOKIES = getCookies();
         window.addEventListener('load', async () => {
-
             if (!!COOKIES?.oauth_token) {
                 monitorAuthTime();
                 await setAuth();
-
             }
-
             // Prevents FOUCs
             document.getElementById("auth-container").style.display = "block";
         });
@@ -47,7 +44,7 @@
 
         async function refreshSession() {
             try {
-                const response = await fetch(`/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
+                const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
                 if (!response.ok) {
                     throw new Error('Request failed');
                 }

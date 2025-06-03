@@ -6,7 +6,7 @@
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
-            fetch('/oauth', {
+            fetch('//localhost:5000/oauth', {
                 method: 'POST',
                 headers: {
                     'X-Code': params.get('code'),
