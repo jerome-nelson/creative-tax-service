@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 //ToStudy
@@ -340,6 +341,12 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	addRoutes(mux, config, log)
+	handler = cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5000"},
+		AllowCredentials: true,
+		Debug:            true,
+		AllowedHeaders:   []string{"X-Code", "Set-Cookie"},
+	}).Handler(mux)
 	return handler
 }
 
@@ -355,14 +362,14 @@ func GetConfig() *Config {
 		Cid:         os.Getenv("CLIENT_ID"),
 		Csecrt:      os.Getenv("CLIENT_SECRET"),
 		ServiceName: os.Getenv("SERVICE_NAME"),
-		RedirectUrl: "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/auth",
+		RedirectUrl: os.Getenv("REDIRECT_URI"),
 	}
 }
 
 func run(ctx context.Context) error {
 
 	config := GetConfig()
-	logger := log.New(os.Stdout, config.ServiceName+": ", log.Lmsgprefix)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 // TODO Needs CORS
@@ -40,36 +41,10 @@ type Page struct {
 	Message string
 }
 
-type Oauth struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`
-	ExpiresIn   int    `json:"expires_in"`
-	// Requires the scope `offline_access` to be set
-	RefreshToken string `json:"refresh_token"`
-}
+type OauthScopes = []string
 
-func authGuard(log *log.Logger) func(h http.HandlerFunc) http.HandlerFunc {
-	log.Println("authGuard init")
-	return func(h http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			var isAuthed bool = false
-			for _, cookie := range r.Cookies() {
-				if cookie.Name == "oauth_token" {
-					isAuthed = true
-				}
-			}
-			if isAuthed != true {
-				log.Printf("attempted to access auth route %s\n", r.URL.Path)
-				http.Error(w, "Not authorised", http.StatusUnauthorized)
-				return
-			}
-
-			h(w, r)
-		}
-	}
-}
-
+// ServeMux.handleFunc allows set route params  `GET /route`, however
+// since I cannot log when attempts happen, this is used instead
 func methodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.HandlerFunc {
 	log.Println("methodGuard init")
 	return func(method string, h http.HandlerFunc) http.HandlerFunc {
@@ -133,7 +108,7 @@ func handleAuth(log *log.Logger) http.HandlerFunc {
 
 func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		scopes := []string{
+		scopes := OauthScopes{
 			"offline_access",
 			"read:me",
 			"read:project.avatar:jira",
@@ -157,7 +132,7 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 		params.Set("scope", strings.Join(scopes, " "))
 
 		data := Page{
-			Title:   "Creative Tax Generator",
+			Title:   "Log in | Zend",
 			Message: fmt.Sprintf("%s?%s", baseURL, params.Encode()),
 		}
 		tmpl, err := template.ParseFiles("templates/index.html")
@@ -174,11 +149,23 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	}
 }
 
+func handleStaticFiles(log *log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		http.ServeFile(w, r, r.URL.Path)
+
+		log.Println("attempted to access: " + r.URL.Path)
+	}
+}
+
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := methodGuard(log)
-	//hasAuth := authGuard(log)
+	// Not working - fix this
+	// Add a template system for index routes
+	// Serve 404 if template not found
 
+	mux.Handle("/f/", http.StripPrefix("/", allowMethod(http.MethodGet, handleStaticFiles(log))))
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
 	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
@@ -188,6 +175,10 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	addRoutes(mux, config, log)
+	handler = cors.New(cors.Options{
+		AllowCredentials: true,
+		Debug:            true,
+	}).Handler(mux)
 	return handler
 }
 
@@ -209,7 +200,7 @@ func run(ctx context.Context) error {
 
 	// Look into hoisting these higher?
 	config := GetConfig()
-	logger := log.New(os.Stdout, config.ServiceName+": ", log.Lmsgprefix)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

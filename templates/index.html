@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Generate Creative Tax Statements with Ease!" />
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/f/main.css" />
+    <link rel="stylesheet" href="/f/index.css" />
+    <script src="/f/main.js"></script>
     <script>
         const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
         const COOKIES = getCookies();
+        async function triggerJira() {
+            let params = `status=no,location=no,toolbar=no,menubar=no,
+width=600,height=800,popup=yes`;
+            window.open("{{.Message}}", '_blank', params);
+        }
         window.addEventListener('load', async () => {
-            if (!!COOKIES?.oauth_token) {
-                monitorAuthTime();
-                await setAuth();
-            }
+            await startAuthFlow();
             // Prevents FOUCs
             document.getElementById("auth-container").style.display = "block";
         });
@@ -21,138 +27,37 @@
                 window.location.reload();
             }
         });
-
-        async function setAuth() {
-            const { name, picture } = await fetchUser();
-
-            document.getElementById("logout").style.display = "block";
-            document.getElementById("authed").innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/> Welcome! ${name}`;
-            document.getElementById("authed").style.display = "block";
-            document.getElementById("login").style.display = "none";
-        }
-
-        function deleteCookie(name) {
-            // DEV
-            console.log("Deleting cookie: ", name);
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        }
-
-        function logout() {
-            COOKIE_LIST.forEach(deleteCookie);
-            window.location.reload();
-        }
-
-        async function refreshSession() {
-            try {
-                const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-                const refreshCount = Number(localStorage.getItem('refresh_token')) ?? 0;
-                localStorage.setItem('refresh_token', refreshCount + 1);
-
-                window.location.reload();
-            } catch (e) {
-                // ERROR LOG
-                console.error('Error fetching refresh: ', e);
-                window.location.reload();
-            }
-        }
-        async function triggerJira() {
-            let params = `status=no,location=no,toolbar=no,menubar=no,
-width=600,height=800,popup=yes`;
-            window.open("{{.Message}}", '_blank', params);
-        }
-
-        function getCookies() {
-            const cookies = document.cookie.split(';');
-            return cookies.reduce((acc, cookieStr) => {
-                const [key, val] = cookieStr.split('=');
-                const findKey = key.toLowerCase().trim();
-                if (COOKIE_LIST.includes(findKey)) {
-                    return {
-                        ...acc,
-                        [findKey]: val
-                    }
-                }
-                return acc;
-            }, {});
-        }
-
-        function monitorAuthTime() {
-            const expires = new Date(COOKIES.expiry);
-            const refreshCount = localStorage.getItem('refresh_token');
-
-            document.getElementById('refresh-token').innerHTML = `${refreshCount}`;
-
-            const checkingAuthTime = setInterval(async () => {
-                const now = new Date();
-                const diffMs = expires - now;
-                let countDown = Math.floor(diffMs / 1000);
-                const hrs = Math.floor(countDown / 3600);
-                const mins = Math.floor((countDown % 3600) / 60);
-                const secs = countDown % 60;
-                document.getElementById("time-left").innerHTML = [
-                    hrs.toString().padStart(2, '0'),
-                    mins.toString().padStart(2, '0'),
-                    secs.toString().padStart(2, '0')
-                ].join(':');
-
-                if (document.getElementById("reauth-required").style.display === 'none') {
-                    document.getElementById("reauth-required").style.display = "block";
-                }
-
-                if (countDown <= 10) {
-                    clearInterval(checkingAuthTime);
-                    await refreshSession();
-                }
-            }, 1000)
-
-        }
-
-        async function fetchUser() {
-            try {
-                const response = await fetch(`https://api.atlassian.com/me`, {
-                    headers: {
-                        Authorization: `Bearer ${COOKIES.oauth_token}`
-                    }
-                });
-
-                return await response.json();
-            } catch (e) {
-                // ERROR LOG
-                console.error('Error fetching user: ', e);
-            }
-        }
-
-        // Figure out scope
     </script>
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-        }
-        #reauth-required {
-            text-align: center;
-            padding: 10px;
-            border-bottom: solid 1px #000;
-        }
-    </style>
 </head>
 <body>
 
-<div id="auth-container" style="display: none">
-    <!--  DEV -->
-    <div id="reauth-required" style="display: none">
-        Cookies will expire in: <span id="time-left"></span> <br />
-        Session refreshed: <span id="refresh-token"></span>
-    </div>
-    <!--    End of DEV -->
-    <div id="authed" style="display: none"></div>
+<section class="wrapper">
+    <div class="section">
+        <div class="logo"></div>
 
-    <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
-    <button id="login" onclick="triggerJira()">Login with Jira</button>
-    <button id="logout" style="display: none" onclick="logout()">Logout</button>
-</div>
+        <div id="auth-container" style="display: none">
+            <!--  DEV -->
+            <div id="reauth-required" style="display: none">
+                Cookies will expire in: <span id="time-left"></span> <br />
+                Session refreshed: <span id="refresh-token"></span>
+            </div>
+            <!-- End of DEV -->
+            <div id="authed" style="display: none"></div>
+
+            <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
+            <div id="login">
+                <h2 class="heading-2">
+                    Easy IP tax statements!
+                </h2>
+                <p class="subheading">We'll log into your Jira and help you generate statements within minutes!</p>
+                <button class="cta login" onclick="triggerJira()">Login with Jira</button>
+            </div>
+            <button id="logout" style="display: none" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="section">
+
+    </div>
+</section>
 </body>
 </html>

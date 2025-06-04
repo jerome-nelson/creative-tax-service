@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/f/main.css" />
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
             fetch('//localhost:5000/oauth', {
+                credentials: 'include',
                 method: 'POST',
                 headers: {
                     'X-Code': params.get('code'),
