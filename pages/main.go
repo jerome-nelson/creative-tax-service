@@ -119,6 +119,11 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 			"read:comment:jira",
 			"read:comment.property:jira",
 			"read:field:jira",
+			"read:issue-details:jira",
+			"read:field.default-value:jira",
+			"read:field.option:jira",
+			"read:field:jira",
+			"read:group:jira",
 		}
 
 		baseURL := "https://auth.atlassian.com/authorize"

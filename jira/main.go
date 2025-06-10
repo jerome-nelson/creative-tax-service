@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -43,6 +44,13 @@ type Oauth struct {
 	ExpiresIn   int    `json:"expires_in"`
 	// Requires the scope `offline_access` to be set
 	RefreshToken string `json:"refresh_token"`
+}
+
+type SearchResults struct {
+	Issues []any          `json:"issues"`
+	Names  map[string]any `json:"names"`
+	Cursor string         `json:"nextPageToken"`
+	Schema map[string]any `json:"string"`
 }
 
 func authGuard(log *log.Logger) func(h http.HandlerFunc) http.HandlerFunc {
@@ -212,7 +220,6 @@ func handleGenerateToken(log *log.Logger, config *Config) http.HandlerFunc {
 			return
 		}
 	}
-
 }
 
 // TODO: Refactor both JIRA auth calls to combine the setCookie Logic and calls
@@ -327,11 +334,167 @@ func handleRefreshToken(log *log.Logger, config *Config) http.HandlerFunc {
 
 }
 
+func handleJiraSearch(log *log.Logger, config *Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := r.URL.Query().Get("user")
+
+		if email == "" {
+			http.Error(w, "Invalid user credentials", http.StatusBadRequest)
+		}
+
+		// Need to fetch the Jira instance url:
+		// https://activecampaign.atlassian.net/
+		bodyData := `{
+		  "expand": "names, changelog",
+		  "fields": [
+			"*all"
+		  ],
+		  "fieldsByKeys": true,
+		  "jql": "assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC"
+		}`
+
+		cookie, err := r.Cookie("oauth_token")
+		if err != nil {
+			switch {
+			case errors.Is(err, http.ErrNoCookie):
+				http.Error(w, "cookie not found", http.StatusBadRequest)
+			default:
+				log.Println(err)
+				http.Error(w, "server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		var token = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", email, cookie.Value)))
+		request, err := http.NewRequest("POST", "https://activecampaign.atlassian.net/rest/api/3/search/jql", bytes.NewBuffer([]byte(bodyData)))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Authorization", "Basic "+token)
+
+		client := &http.Client{}
+		results, err := client.Do(request)
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Println("Error closing body:", err)
+			}
+		}(results.Body)
+
+		if results != nil {
+			if results.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(results.Body)
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println(string(body))
+				return
+			}
+
+			res := SearchResults{}
+			err := json.NewDecoder(results.Body).Decode(&res)
+			if err != nil {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("Error retrieving oauth:", err)
+				return
+			}
+
+			if err := encode(w, r, http.StatusOK, res); err != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				log.Println(err)
+			}
+		}
+
+		if err != nil {
+			http.Error(w, "Error retrieving authentication", http.StatusInternalServerError)
+			log.Println("Error retrieving oauth:", err)
+			return
+		}
+	}
+}
+
+func handleIssue(log *log.Logger, config *Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := r.URL.Query().Get("user")
+
+		if email == "" {
+			http.Error(w, "Invalid user credentials", http.StatusBadRequest)
+		}
+
+		// Need to fetch the Jira instance url:
+		// https://activecampaign.atlassian.net/
+		bodyData := `{
+		  "expand": "names, changelog",
+		  "fields": [
+			"*all"
+		  ],
+		  "fieldsByKeys": true,
+		  "jql": "assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC"
+		}`
+
+		cookie, err := r.Cookie("oauth_token")
+		if err != nil {
+			switch {
+			case errors.Is(err, http.ErrNoCookie):
+				http.Error(w, "cookie not found", http.StatusBadRequest)
+			default:
+				log.Println(err)
+				http.Error(w, "server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		var token = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", email, cookie.Value)))
+		request, err := http.NewRequest("GET", "https://activecampaign.atlassian.net/rest/api/3/issue/FOR2-137?fields=*all", bytes.NewBuffer([]byte(bodyData)))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Authorization", "Basic "+token)
+
+		client := &http.Client{}
+		results, err := client.Do(request)
+
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				log.Println("Error closing body:", err)
+			}
+		}(results.Body)
+
+		if results != nil {
+			if results.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(results.Body)
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println(string(body))
+				return
+			}
+
+			res := SearchResults{}
+			err := json.NewDecoder(results.Body).Decode(&res)
+			if err != nil {
+				http.Error(w, "Error Authenticating", http.StatusBadRequest)
+				log.Println("Error retrieving oauth:", err)
+				return
+			}
+
+			if err := encode(w, r, http.StatusOK, res); err != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				log.Println(err)
+			}
+		}
+
+		if err != nil {
+			http.Error(w, "Error retrieving authentication", http.StatusInternalServerError)
+			log.Println("Error retrieving oauth:", err)
+			return
+		}
+	}
+}
+
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := methodGuard(log)
-	//hasAuth := authGuard(log)
+	hasAuth := authGuard(log)
 
+	mux.HandleFunc("/single", allowMethod(http.MethodPost, hasAuth(handleIssue(log, config))))
+	mux.HandleFunc("/search", allowMethod(http.MethodPost, hasAuth(handleJiraSearch(log, config))))
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
 	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config)))
@@ -341,8 +504,10 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	addRoutes(mux, config, log)
+	// Make ALLOWED ORIGINS an .env array
+	// Same with Allowed Headers ..mb
 	handler = cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5000"},
+		AllowedOrigins:   []string{"http://localhost:5000", "http://localhost:7000"},
 		AllowCredentials: true,
 		Debug:            true,
 		AllowedHeaders:   []string{"X-Code", "Set-Cookie"},
@@ -351,7 +516,7 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 }
 
 func GetConfig() *Config {
-	err := godotenv.Load("jira-auth.env")
+	err := godotenv.Load("jira.env")
 	if err != nil {
 		log.Fatal("Error loading env variables")
 	}
@@ -368,8 +533,9 @@ func GetConfig() *Config {
 
 func run(ctx context.Context) error {
 
+	// Split these into other files that get included into the application
 	config := GetConfig()
-	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags|log.Lshortfile)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()

@@ -9,8 +9,6 @@
     <link rel="stylesheet" href="/f/index.css" />
     <script src="/f/main.js"></script>
     <script>
-        const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
-        const COOKIES = getCookies();
         async function triggerJira() {
             let params = `status=no,location=no,toolbar=no,menubar=no,
 width=600,height=800,popup=yes`;
@@ -40,6 +38,7 @@ width=600,height=800,popup=yes`;
             <div id="reauth-required" style="display: none">
                 Cookies will expire in: <span id="time-left"></span> <br />
                 Session refreshed: <span id="refresh-token"></span>
+                <button onclick="fetchTest()">Fetch Issues</button>
             </div>
             <!-- End of DEV -->
             <div id="authed" style="display: none"></div>

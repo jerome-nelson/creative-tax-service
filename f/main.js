@@ -1,6 +1,10 @@
 
+const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
+const USER_KEY = 'user';
 async function setAuth() {
-    const { name, picture } = await fetchUser();
+    const { name, email, picture } = await fetchUser();
+
+    localStorage.setItem(USER_KEY, JSON.stringify({ name, email, picture }));
 
     document.getElementById("logout").style.display = "block";
     document.getElementById("authed").innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/> Welcome! ${name}`;
@@ -16,11 +20,13 @@ function deleteCookie(name) {
 
 function logout() {
     COOKIE_LIST.forEach(deleteCookie);
+    localStorage.removeItem(USER_KEY);
     window.location.reload();
 }
 
 async function refreshSession() {
     try {
+        const COOKIES = getCookies();
         const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
         if (!response.ok) {
             throw new Error('Request failed');
@@ -52,6 +58,7 @@ function getCookies() {
 }
 
 function monitorAuthTime() {
+    const COOKIES = getCookies();
     const expires = new Date(COOKIES.expiry);
     const refreshCount = localStorage.getItem('refresh_token');
 
@@ -84,6 +91,7 @@ function monitorAuthTime() {
 
 async function fetchUser() {
     try {
+        const COOKIES = getCookies();
         const response = await fetch(`https://api.atlassian.com/me`, {
             headers: {
                 Authorization: `Bearer ${COOKIES.oauth_token}`
@@ -98,8 +106,52 @@ async function fetchUser() {
 }
 
 async function startAuthFlow() {
+    const COOKIES = getCookies();
     if (!!COOKIES?.oauth_token) {
         monitorAuthTime();
         await setAuth();
+    }
+}
+
+function getSavedUser() {
+
+    const data = localStorage.getItem(USER_KEY);
+
+    if (!!data) {
+        return JSON.parse(localStorage.getItem(USER_KEY));
+    }
+
+    return {};
+}
+
+async function fetchIssues() {
+    try {
+        const { email } = getSavedUser();
+        const data = await fetch(`//localhost:5000/search?user=${email}`, { credentials: "include", method: 'POST' });
+        const response = await data.json();
+
+        if (!response.ok) {
+            throw new Error("Fetch failed");
+        }
+
+        console.log(response);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function fetchTest() {
+    try {
+        const { email } = getSavedUser();
+        const data = await fetch(`//localhost:5000/single?user=${email}`, { credentials: "include", method: 'POST' });
+        const response = await data.json();
+
+        if (!response.ok) {
+            throw new Error("Fetch failed");
+        }
+
+        console.log(response);
+    } catch (e) {
+        console.error(e);
     }
 }
