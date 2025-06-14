@@ -1,25 +1,21 @@
 package main
 
 import (
+	"JiraConnect/shared"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/rs/cors"
 )
 
-// TODO Needs CORS
 //ToStudy
 // Context
 // defer
@@ -28,59 +24,14 @@ import (
 // get used to writing anon functions
 // What is a rune?
 
-type Config struct {
-	Port        string
-	Host        string
-	Cid         string
-	ServiceName string
-	RedirectUrl string
-}
-
 type Page struct {
 	Title   string
 	Message string
 }
 
-type OauthScopes = []string
-
-// ServeMux.handleFunc allows set route params  `GET /route`, however
-// since I cannot log when attempts happen, this is used instead
-func methodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.HandlerFunc {
-	log.Println("methodGuard init")
-	return func(method string, h http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != method {
-				log.Printf("method %s attempted on %s\n", r.Method, r.URL.Path)
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-				return
-			}
-
-			h(w, r)
-		}
-	}
-}
-
-func encode[T any](w http.ResponseWriter, _ *http.Request, status int, v T) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		return fmt.Errorf("encode json: %w", err)
-	}
-	return nil
-}
-
-func handleHealthCheck(log *log.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tm := time.Now().Format(time.RFC1123)
-		data := map[string]any{
-			"result": "Pong at " + tm,
-		}
-
-		if err := encode(w, r, http.StatusOK, data); err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
-			log.Println(err)
-		}
-	}
+type Config struct {
+	shared.ServerConfig
+	shared.JiraConfig
 }
 
 func handleAuth(log *log.Logger) http.HandlerFunc {
@@ -108,37 +59,10 @@ func handleAuth(log *log.Logger) http.HandlerFunc {
 
 func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
-		scopes := OauthScopes{
-			"offline_access",
-			"read:me",
-			"read:project.avatar:jira",
-			"read:filter:jira",
-			"read:group:jira",
-			"read:issue:jira",
-			"read:attachment:jira",
-			"read:comment:jira",
-			"read:comment.property:jira",
-			"read:field:jira",
-			"read:issue-details:jira",
-			"read:field.default-value:jira",
-			"read:field.option:jira",
-			"read:field:jira",
-			"read:group:jira",
-		}
-
-		baseURL := "https://auth.atlassian.com/authorize"
-		params := url.Values{}
-		params.Set("audience", "api.atlassian.com")
-		params.Set("client_id", config.Cid) // fill your actual client_id
-		params.Set("redirect_uri", config.RedirectUrl)
-		params.Set("response_type", "code")
-		params.Set("prompt", "consent")
-
-		params.Set("scope", strings.Join(scopes, " "))
 
 		data := Page{
-			Title:   "Log in | Zend",
-			Message: fmt.Sprintf("%s?%s", baseURL, params.Encode()),
+			Title:   "Zend",
+			Message: shared.SetAuthUrl(config.JiraConfig),
 		}
 		tmpl, err := template.ParseFiles("templates/index.html")
 		if err != nil {
@@ -156,22 +80,20 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 
 func handleStaticFiles(log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		http.ServeFile(w, r, r.URL.Path)
-
 		log.Println("attempted to access: " + r.URL.Path)
+		http.ServeFile(w, r, r.URL.Path)
 	}
 }
 
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
-	allowMethod := methodGuard(log)
-	// Not working - fix this
+	allowMethod := shared.MethodGuard(log)
+
 	// Add a template system for index routes
 	// Serve 404 if template not found
-
-	mux.Handle("/f/", http.StripPrefix("/", allowMethod(http.MethodGet, handleStaticFiles(log))))
-	mux.HandleFunc("/health", allowMethod(http.MethodGet, handleHealthCheck(log)))
+	// Nice to have: Move templates and static into pages folder
+	mux.Handle("/static/", http.StripPrefix("/", allowMethod(http.MethodGet, handleStaticFiles(log))))
+	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
 	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
 }
@@ -179,11 +101,9 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
+	handler = shared.HandleCors(mux, log)
+	// Dont like the pattern difference. Fix
 	addRoutes(mux, config, log)
-	handler = cors.New(cors.Options{
-		AllowCredentials: true,
-		Debug:            true,
-	}).Handler(mux)
 	return handler
 }
 
@@ -193,11 +113,15 @@ func GetConfig() *Config {
 		log.Fatal("Error loading env variables")
 	}
 	return &Config{
-		Cid:         os.Getenv("CLIENT_ID"),
-		Port:        os.Getenv("PORT"),
-		Host:        os.Getenv("HOST"),
-		ServiceName: os.Getenv("SERVICE_NAME"),
-		RedirectUrl: "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/auth",
+		JiraConfig: shared.JiraConfig{
+			RedirectUrl: os.Getenv("REDIRECT_URL"),
+			Cid:         os.Getenv("CLIENT_ID"),
+		},
+		ServerConfig: shared.ServerConfig{
+			Port:        os.Getenv("PORT"),
+			Host:        os.Getenv("HOST"),
+			ServiceName: os.Getenv("SERVICE_NAME"),
+		},
 	}
 }
 
@@ -217,7 +141,7 @@ func run(ctx context.Context) error {
 	}
 
 	go func() {
-		logger.Printf("service started - %s\n", httpServer.Addr)
+		logger.Printf("server started - %s\n", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			_, err := fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
 			if err != nil {

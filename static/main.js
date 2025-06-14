@@ -1,9 +1,69 @@
 
+const JiraAPI = {
+    triggerPopup: (url) => {
+        let params = `status=no,location=no,toolbar=no,menubar=no,
+    width=600,height=800,popup=yes`;
+        window.open(url, '_blank', params);
+    },
+    fetchIssues: async () => {
+        try {
+            const { email } = getSavedUser();
+            const data = await fetch(`//localhost:5000/search?user=${email}`, { credentials: "include", method: 'POST' });
+            const response = await data.json();
+
+            if (!response.ok) {
+                throw new Error("Fetch failed");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    },
+    fetchUser: async () => {
+        try {
+            const COOKIES = getCookies();
+            const response = await fetch(`https://api.atlassian.com/me`, {
+                headers: {
+                    Authorization: `Bearer ${COOKIES.oauth_token}`
+                }
+            });
+
+            return await response.json();
+        } catch (e) {
+            // ERROR LOG
+            console.error('Error fetching user: ', e);
+        }
+    },
+    refreshSession: async () => {
+        try {
+            const COOKIES = getCookies();
+            const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+            const refreshCount = Number(localStorage.getItem('refresh_token')) ?? 0;
+            localStorage.setItem('refresh_token', refreshCount + 1);
+
+            window.location.reload();
+        } catch (e) {
+            // ERROR LOG
+            console.error('Error fetching refresh: ', e);
+            window.location.reload();
+        }
+    },
+    startAuthFlow: async () => {
+        const COOKIES = getCookies();
+        if (!!COOKIES?.oauth_token) {
+            monitorAuthTime();
+            await setAuth();
+        }
+    }
+}
+
 const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
 const USER_KEY = 'user';
 async function setAuth() {
-    const { name, email, picture } = await fetchUser();
-
+    const { name, email, picture } = await JiraAPI.fetchUser();
+    window.document.title = `Hello ${name} | ` + window.document.title;
     localStorage.setItem(USER_KEY, JSON.stringify({ name, email, picture }));
 
     document.getElementById("logout").style.display = "block";
@@ -24,23 +84,6 @@ function logout() {
     window.location.reload();
 }
 
-async function refreshSession() {
-    try {
-        const COOKIES = getCookies();
-        const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
-        if (!response.ok) {
-            throw new Error('Request failed');
-        }
-        const refreshCount = Number(localStorage.getItem('refresh_token')) ?? 0;
-        localStorage.setItem('refresh_token', refreshCount + 1);
-
-        window.location.reload();
-    } catch (e) {
-        // ERROR LOG
-        console.error('Error fetching refresh: ', e);
-        window.location.reload();
-    }
-}
 
 function getCookies() {
     const cookies = document.cookie.split(';');
@@ -83,35 +126,12 @@ function monitorAuthTime() {
 
         if (countDown <= 10) {
             clearInterval(checkingAuthTime);
-            await refreshSession();
+            await JiraAPI.refreshSession();
         }
     }, 1000)
 
 }
 
-async function fetchUser() {
-    try {
-        const COOKIES = getCookies();
-        const response = await fetch(`https://api.atlassian.com/me`, {
-            headers: {
-                Authorization: `Bearer ${COOKIES.oauth_token}`
-            }
-        });
-
-        return await response.json();
-    } catch (e) {
-        // ERROR LOG
-        console.error('Error fetching user: ', e);
-    }
-}
-
-async function startAuthFlow() {
-    const COOKIES = getCookies();
-    if (!!COOKIES?.oauth_token) {
-        monitorAuthTime();
-        await setAuth();
-    }
-}
 
 function getSavedUser() {
 
@@ -122,36 +142,4 @@ function getSavedUser() {
     }
 
     return {};
-}
-
-async function fetchIssues() {
-    try {
-        const { email } = getSavedUser();
-        const data = await fetch(`//localhost:5000/search?user=${email}`, { credentials: "include", method: 'POST' });
-        const response = await data.json();
-
-        if (!response.ok) {
-            throw new Error("Fetch failed");
-        }
-
-        console.log(response);
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-async function fetchTest() {
-    try {
-        const { email } = getSavedUser();
-        const data = await fetch(`//localhost:5000/single?user=${email}`, { credentials: "include", method: 'POST' });
-        const response = await data.json();
-
-        if (!response.ok) {
-            throw new Error("Fetch failed");
-        }
-
-        console.log(response);
-    } catch (e) {
-        console.error(e);
-    }
 }

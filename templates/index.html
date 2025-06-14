@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Generate Creative Tax Statements with Ease!" />
     <title>{{.Title}}</title>
-    <link rel="stylesheet" href="/f/main.css" />
-    <link rel="stylesheet" href="/f/index.css" />
-    <script src="/f/main.js"></script>
+    <link rel="stylesheet" href="/static/main.css" />
+    <link rel="stylesheet" href="/static/index.css" />
+    <script src="/static/main.js"></script>
     <script>
-        async function triggerJira() {
-            let params = `status=no,location=no,toolbar=no,menubar=no,
-width=600,height=800,popup=yes`;
-            window.open("{{.Message}}", '_blank', params);
-        }
         window.addEventListener('load', async () => {
-            await startAuthFlow();
+            window.document.title = `Log in | ` + window.document.title;
+            await JiraAPI.startAuthFlow();
             // Prevents FOUCs
             document.getElementById("auth-container").style.display = "block";
         });
@@ -29,18 +25,22 @@ width=600,height=800,popup=yes`;
 </head>
 <body>
 
-<section class="wrapper">
+<!--  DEV -->
+<div id="dev-details">
+    <h3>Dev Mode</h3>
+    <div id="reauth-required" style="display: none">
+        Cookies will expire in: <span id="time-left"></span> <br />
+        Session refreshed: <span id="refresh-token"></span>
+        <button onclick="JiraAPI.fetchIssues()">Fetch Issues</button>
+    </div>
+</div>
+<!-- End of DEV -->
+
+<section class="wrapper center">
     <div class="section">
         <div class="logo"></div>
 
         <div id="auth-container" style="display: none">
-            <!--  DEV -->
-            <div id="reauth-required" style="display: none">
-                Cookies will expire in: <span id="time-left"></span> <br />
-                Session refreshed: <span id="refresh-token"></span>
-                <button onclick="fetchTest()">Fetch Issues</button>
-            </div>
-            <!-- End of DEV -->
             <div id="authed" style="display: none"></div>
 
             <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
@@ -49,13 +49,10 @@ width=600,height=800,popup=yes`;
                     Easy IP tax statements!
                 </h2>
                 <p class="subheading">We'll log into your Jira and help you generate statements within minutes!</p>
-                <button class="cta login" onclick="triggerJira()">Login with Jira</button>
+                <button class="cta login" onclick="JiraAPI.triggerPopup('{{.Message}}')">Login with Jira</button>
             </div>
             <button id="logout" style="display: none" onclick="logout()">Logout</button>
         </div>
-    </div>
-    <div class="section">
-
     </div>
 </section>
 </body>

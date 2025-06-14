@@ -1,6 +1,6 @@
-#reauth-required {
-    text-align: center;
+#dev-details {
     padding: 10px;
+    background: var(--honey-comb-yellow);
     border-bottom: solid 1px #000;
 }
 
@@ -16,6 +16,11 @@ p.subheading {
     margin: 0 auto;
     padding-top: 80px;
 }
+
+.wrapper.center {
+    justify-content: center;
+}
+
 .section {
     width: 50%;
 }
@@ -57,7 +62,8 @@ p.subheading {
 }
 
 .login {
-    min-width: 376px;
+    min-width: 100%;
+    max-width: 376px;
 }
 /* change to .svg */
 .logo {

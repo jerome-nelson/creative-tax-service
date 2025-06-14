@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{{.Title}}</title>
-    <link rel="stylesheet" href="/f/main.css" />
+    <link rel="stylesheet" href="/main.css" />
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
@@ -30,6 +30,13 @@
     </script>
 </head>
 <body>
+<!--
+ 1. Needs styling
+ 2. States to cover
+    i.      Loading Auth
+    ii.     Auth failed (with follow-up actions)
+    iii.    Auth succeeded (w/ a redirect)
+ -->
 This is the auth page
 
 <div id="fatal-error" style="display: none">
