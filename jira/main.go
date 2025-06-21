@@ -53,13 +53,6 @@ func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.Handler
 			bytes.NewBuffer(jsonValue),
 		)
 
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				log.Println("Error closing body:", err)
-			}
-		}(oauth.Body)
-
 		if oauth != nil {
 			if oauth.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(oauth.Body)
@@ -72,7 +65,7 @@ func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.Handler
 			err := json.NewDecoder(oauth.Body).Decode(&res)
 			if err != nil {
 				http.Error(w, "Error Authenticating", http.StatusBadRequest)
-				log.Println("Error retrieving oauth:", err)
+				log.Println("oauth error:", err)
 				return
 			}
 
@@ -89,6 +82,8 @@ func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.Handler
 			log.Println("Error retrieving oauth:", err)
 			return
 		}
+
+		defer oauth.Body.Close()
 	}
 }
 
@@ -154,6 +149,29 @@ func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerF
 
 }
 
+func handleTempIssue(log *log.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var anyJson map[string]interface{}
+		jsonFile, err := os.ReadFile("./jira/issues-1-sample.json")
+		err2 := json.Unmarshal(jsonFile, &anyJson)
+		if err != nil || err2 != nil {
+			if err != nil {
+				fmt.Println(err)
+			}
+			if err2 != nil {
+				fmt.Println(err2)
+			}
+			http.Error(w, "Error retrieving file", http.StatusInternalServerError)
+			return
+		}
+
+		log.Println("Successfully Opened ./jira/issues-1-sample.json")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(anyJson)
+	}
+}
+
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := shared.MethodGuard(log)
@@ -161,6 +179,7 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
 	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config.JiraConfig)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config.JiraConfig)))
+	mux.Handle("/temp", http.StripPrefix("/", allowMethod(http.MethodGet, handleTempIssue(log))))
 }
 
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
@@ -172,14 +191,16 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 }
 
 func GetConfig() *Config {
-	err := godotenv.Load("pages.env")
+	err := godotenv.Load("jira.env")
 	if err != nil {
 		log.Fatal("Error loading env variables")
 	}
 	return &Config{
 		JiraConfig: shared.JiraConfig{
-			RedirectUrl: "http://" + os.Getenv("HOST") + ":" + os.Getenv("PORT") + "/auth",
+			RedirectUrl: os.Getenv("REDIRECT_URL"),
 			Cid:         os.Getenv("CLIENT_ID"),
+			Secret:      os.Getenv("CLIENT_SECRET"),
+			OauthUrl:    os.Getenv("OAUTH_URL"),
 		},
 		ServerConfig: shared.ServerConfig{
 			Port:        os.Getenv("PORT"),

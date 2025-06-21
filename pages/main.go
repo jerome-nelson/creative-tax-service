@@ -25,8 +25,9 @@ import (
 // What is a rune?
 
 type Page struct {
-	Title   string
-	Message string
+	Title     string
+	Message   string
+	ScriptUrl template.JS
 }
 
 type Config struct {
@@ -61,8 +62,8 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 
 		data := Page{
-			Title:   "Zend",
-			Message: shared.SetAuthUrl(config.JiraConfig),
+			Title:     "Zend",
+			ScriptUrl: template.JS(shared.SetAuthUrl(config.JiraConfig)),
 		}
 		tmpl, err := template.ParseFiles("templates/index.html")
 		if err != nil {
@@ -71,6 +72,7 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 			return
 		}
 
+		// TODO: Review why ScriptUrl is being double escaped when it doesn't needed to be
 		if err = tmpl.Execute(w, data); err != nil {
 			http.Error(w, "Error executing template", http.StatusInternalServerError)
 			log.Println("error applying template", err)

@@ -1,5 +1,79 @@
-
+const JIRA_URI = "//activecampaign.atlassian.net";
+const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const JiraAPI = {
+    loadIssues: async () => {
+        try {
+            const data = await JiraAPI.fetchIssues();
+            document.getElementById('issues').style.display = 'block';
+            JiraAPI.setIssueList(data.issues);
+
+            // Later
+            loadDatePicker();
+
+        } catch (e) {
+            console.error("Fetch err: ", e)
+        }
+    },
+
+    // Look into work logs and parse to get total time - but has to be limited to the creator
+    // + add time of others but without names and details
+    // Add user time as a ratio of total time worked on task
+    setIssueList: (issues) => {
+        const list = document.createElement('ul');
+        list.id = 'issues-list';
+        list.setAttribute('class', 'issues-list');
+        for (const issue of issues) {
+            const {key, fields: {summary, created, updated, description, issuetype }} = issue;
+            localStorage.setItem(`issue-${key}`, description);
+            const listItem = document.createElement('li');
+            listItem.setAttribute('class', 'issue-type');
+
+            ///
+            const button = document.createElement('button');
+            button.addEventListener('click', event => console.log(key, event, description));
+            button.setAttribute('class', 'select-issue cta small');
+            button.innerText = 'Select Issue';
+
+            ///
+            const button2 = document.createElement('button');
+            button2.addEventListener('click', event => console.log(key, event, description));
+            button2.setAttribute('class', 'generate-issue cta small');
+            button2.innerText = 'Generate Tax Entry';
+
+            listItem.innerHTML = `
+                    <section class="issue-wrapper">
+                        <aside class="issue-icon">
+<!--                            <img src="${issuetype.iconUrl}" title="${issuetype.name} icon" alt="${issuetype.name} icon" />-->
+<!-- Temporary -->
+                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns" width="16px" height="16px" viewBox="0 0 16 16" version="1.1" data-ember-extension="1">
+                                    <!-- Generator: Sketch 3.5.2 (25235) - http://www.bohemiancoding.com/sketch -->
+                                    <title>bug</title>
+                                    <desc>Created with Sketch.</desc>
+                                    <defs/>
+                                    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+                                        <g id="bug" sketch:type="MSArtboardGroup">
+                                            <g id="Bug" sketch:type="MSLayerGroup" transform="translate(1.000000, 1.000000)">
+                                                <rect id="Rectangle-36" fill="#E5493A" sketch:type="MSShapeGroup" x="0" y="0" width="14" height="14" rx="2"/>
+                                                <path d="M10,7 C10,8.657 8.657,10 7,10 C5.343,10 4,8.657 4,7 C4,5.343 5.343,4 7,4 C8.657,4 10,5.343 10,7" id="Fill-2" fill="#FFFFFF" sketch:type="MSShapeGroup"/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                        </aside>
+                        <article class="issue-details" id="${key}-details">
+                            <h4 class="title">${key} - ${summary}</h4>
+                            <aside class="sub-issue">Last Updated on ${addFormattedTime(updated)}</aside>
+                            <aside class="button-group"></aside>
+                        </article>
+                    </section>
+                `;
+            listItem.querySelector(`#${key}-details .button-group`).appendChild(button);
+            listItem.querySelector(`#${key}-details .button-group`).appendChild(button2);
+            list.appendChild(listItem);
+        }
+
+        document.getElementById('issue-container').append(list);
+    },
     triggerPopup: (url) => {
         let params = `status=no,location=no,toolbar=no,menubar=no,
     width=600,height=800,popup=yes`;
@@ -7,13 +81,30 @@ const JiraAPI = {
     },
     fetchIssues: async () => {
         try {
-            const { email } = getSavedUser();
-            const data = await fetch(`//localhost:5000/search?user=${email}`, { credentials: "include", method: 'POST' });
-            const response = await data.json();
+            //
+            const data = getSavedUser();
+            const COOKIES = getCookies();
+            const auth = `${data.email}:${COOKIES.oauth_token}`;
+            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC`);
+            // const response = fetch(`${JIRA_URI}/rest/api/3/search/jql?fields=*all&jql=${jql}`, {
+            //     method: 'GET',
+            //     credentials: 'include'
+            // })
+
+            const response = await fetch(`//localhost:5000/temp`, {
+                method: 'GET',
+                credentials: 'include'
+            })
 
             if (!response.ok) {
                 throw new Error("Fetch failed");
             }
+
+            return await response.json();
+            // TOOD: Inject datepicker dynamically
+            // const datePicker = document.createElement('script');
+            // datePicker.src = '/static/datepicker-full.min.js';
+            // document.body.append(datePicker);
         } catch (e) {
             console.error(e);
         }
@@ -30,13 +121,17 @@ const JiraAPI = {
             return await response.json();
         } catch (e) {
             // ERROR LOG
-            console.error('Error fetching user: ', e);
+            console.error('Error fetching user, attempting to fetch previously cached user ', e);
+            return getSavedUser();
         }
     },
     refreshSession: async () => {
         try {
             const COOKIES = getCookies();
-            const response = await fetch(`//localhost:5000/refresh`, { method: 'POST', headers: {'x-refresh': COOKIES['refresh_token']}});
+            const response = await fetch(`//localhost:5000/refresh`, {
+                method: 'POST',
+                headers: {'x-refresh': COOKIES['refresh_token']}
+            });
             if (!response.ok) {
                 throw new Error('Request failed');
             }
@@ -61,15 +156,23 @@ const JiraAPI = {
 
 const COOKIE_LIST = ['oauth_token', 'scopes', 'expiry', 'refresh_token'];
 const USER_KEY = 'user';
-async function setAuth() {
-    const { name, email, picture } = await JiraAPI.fetchUser();
-    window.document.title = `Hello ${name} | ` + window.document.title;
-    localStorage.setItem(USER_KEY, JSON.stringify({ name, email, picture }));
 
+async function setAuth() {
+    const {name, email, picture} = await JiraAPI.fetchUser();
+    window.document.title = `Hello ${name} | ` + window.document.title;
+    localStorage.setItem(USER_KEY, JSON.stringify({name, email, picture}));
+    const avatar = document.createElement('div');
+    avatar.setAttribute('class', 'avatar');
+    avatar.innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/>`;
     document.getElementById("logout").style.display = "block";
-    document.getElementById("authed").innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/> Welcome! ${name}`;
+    document.getElementById("user").appendChild(avatar);
+    document.getElementById("user").append(` Welcome! ${name}`);
     document.getElementById("authed").style.display = "block";
+    document.getElementById('main-logo').style.display = 'none';
     document.getElementById("login").style.display = "none";
+
+    // TODO: Should have a load state
+    JiraAPI.loadIssues()
 }
 
 function deleteCookie(name) {
@@ -142,4 +245,33 @@ function getSavedUser() {
     }
 
     return {};
+}
+
+function loadDatePicker() {
+    // show view
+    const elem = document.querySelector('.datepicker');
+    try {
+        const datepicker = new window.Datepicker(elem, {});
+        window.test = datepicker;
+        datepicker.show();
+        console.log("Datepicker loaded: ", datepicker);
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+function addFormattedTime(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getDay()} ${shortMonths[date.getMonth() - 1]} ${date.getFullYear()}`;
+}
+
+// Might be replaced by Datepicker functionality
+function togglePicker() {
+    const pickerElem = document.getElementById('date-picker-faux');
+    if (pickerElem.style.visibility !== 'hidden') {
+        pickerElem.style.visibility = 'hidden';
+        return;
+    }
+
+    pickerElem.style.visibility = 'visible';
 }
