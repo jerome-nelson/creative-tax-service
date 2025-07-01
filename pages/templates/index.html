@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Generate Creative Tax Statements with Ease!"/>
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/main.css"/>
+    <link rel="stylesheet" href="/static/index.css"/>
+    <meta name="referrer" content="no-referrer"/>
+
+    <script src="/static/main.js"></script>
+    <!-- TODO Later -->
+    <link rel="stylesheet" href="/static/datepicker.min.css"/>
+    <script src="/static/datepicker-full.min.js"></script>
+    <script>
+        window.addEventListener('load', async () => {
+            window.document.title = `Log in | ` + window.document.title;
+            await JiraAPI.startAuthFlow();
+            // Prevents FOUCs
+            document.getElementById("auth-container").style.display = "block";
+        });
+
+        window.addEventListener('message', event => {
+            if (event.data === 'reload') {
+                window.location.reload();
+            }
+        });
+    </script>
+</head>
+<body>
+
+<!-- TODO: Add offline mode -->
+<div id="offline-mode" style="display: none">
+    App is offline. Changes are now saved to localstorage
+</div>
+<!--  DEV -->
+<div id="dev-details">
+    <h3>Dev Mode</h3>
+    <div id="reauth-required" style="display: none">
+        Cookies will expire in: <span id="time-left"></span> <br/>
+        Session refreshed: <span id="refresh-token"></span>
+        <button onclick="JiraAPI.loadIssues()">Fetch Issues</button>
+    </div>
+</div>
+<!-- End of DEV -->
+
+<section class="wrapper center">
+    <div class="section">
+        <div id="main-logo" class="logo sub-section"></div>
+
+        <div id="auth-container">
+            <div id="authed">
+                <div class="user-details">
+                    <div id="user"></div>
+                    <button id="logout" class="cta-inverse logout-cta" style="display: none" onclick="logout()">Logout</button>
+                </div>
+                <div id="issues" style="display: none">
+                    <heading class="issue-heading">
+                        <h3 class="heading">Issues</h3>
+                        <div class="datepicker-container">
+                            <button id="select-by-date" class="cta-inverse" onclick="togglePicker()">
+                                Filter by Date
+                            </button>
+
+                            <div style="visibility: hidden;" id="date-picker-faux" class="faux-datepicker">
+                                <!-- TODO: Fix the datepicker container -->
+                                <div class="datepicker"></div>
+                            </div>
+                        </div>
+                    </heading>
+                    <div id="issue-container"></div>
+                </div>
+            </div>
+
+            <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
+            <div id="login">
+                <h2 class="heading-2">
+                    Easy IP tax statements!
+                </h2>
+                <p class="subheading">We'll log into your Jira and help you generate statements within minutes!</p>
+                <button class="cta login" onclick="JiraAPI.triggerPopup('{{.ScriptUrl}}')">Login with Jira</button>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,133 @@
+#dev-details {
+    padding: 10px;
+    background: var(--honey-comb-yellow);
+    border-bottom: solid 1px #000;
+}
+
+.wrapper {
+    display: flex;
+    max-width: 800px;
+    margin: 0 auto;
+    padding-top: 80px;
+}
+
+.wrapper.center {
+    justify-content: center;
+}
+
+.section {
+    min-width: 50%;
+    padding: 8px;
+}
+
+
+
+.login {
+    min-width: 100%;
+    max-width: 376px;
+}
+/* change to .svg */
+.logo {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+}
+.logo::after {
+    content: "ZEND";
+    font-size: 36px;
+    font-family: var(--base-font-family);
+    color: var(--base-font-color);
+    text-transform: uppercase;
+    font-weight: bolder;
+}
+
+.sub-section {
+    margin-bottom: 16px;
+}
+
+.issues-list {
+    min-width: 400px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.issue-type {
+    border-radius: var(--cta-styles-radius-large);
+    background: var(--base-font-color);
+    margin: 8px 0;
+    padding: 8px;
+}
+issue-details {
+    padding: 4px 0;
+}
+.issue-details .title {
+    margin: 0;
+    padding: 0;
+    color: var(--raisin-black);
+}
+.issue-wrapper {
+    display: flex;
+}
+.issue-icon {
+    padding-top: 4px;
+    padding-right: 8px;
+}
+.sub-issue {
+    /* Add a css variable/get the right colour type */
+    color: var(--onyx);
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+.button-group {
+    margin-top: 8px;
+}
+
+.button-group .cta {
+    margin-right: 4px;
+}
+
+.button-group .cta:last-child {
+    margin-right: 0;
+}
+
+.issue-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.datepicker-container {
+    position: relative;
+}
+
+.faux-datepicker {
+    border-radius: var(--cta-styles-radius-large);
+    position: absolute;
+    height: 100px;
+    width: 300px;
+    right: 0;
+    background: red;
+}
+
+.logout-cta {
+    display: block;
+    margin-left: 10px;
+}
+
+
+/* Some kind of weird hack here - fix it at some point */
+#user, .user-details {
+    display: flex;
+    align-items: center;
+}
+
+.user-details .avatar {
+    display: inline-block;
+    background: red;
+    overflow: hidden;
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    margin-right: 8px;
+}

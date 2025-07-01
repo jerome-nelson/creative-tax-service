@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -13,12 +12,6 @@ import (
 	"sync"
 	"time"
 )
-
-type Page struct {
-	Title     string
-	Message   string
-	ScriptUrl template.JS
-}
 
 type Config struct {
 	shared.ServerConfig
@@ -28,20 +21,17 @@ type Config struct {
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := shared.MethodGuard(log)
-	webTypesWhitelist := allowWebTypesOnly(log)
-
-	mux.Handle("/static/", http.StripPrefix("/", allowMethod(http.MethodGet, webTypesWhitelist(handleStaticFiles(log)))))
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
-	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
-	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
+	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config.JiraConfig)))
+	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config.JiraConfig)))
+	mux.Handle("/temp", http.StripPrefix("/", allowMethod(http.MethodGet, handleTempIssue(log))))
 }
 
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
-	handler = shared.HandleCors(mux, log)
-	// Dont like the pattern difference. Fix
 	addRoutes(mux, config, log)
+	handler = shared.HandleCors(mux, log)
 	return handler
 }
 
@@ -50,6 +40,8 @@ func GetConfig() *Config {
 		JiraConfig: shared.JiraConfig{
 			RedirectUrl: os.Getenv("REDIRECT_URL"),
 			Cid:         os.Getenv("CLIENT_ID"),
+			Secret:      os.Getenv("CLIENT_SECRET"),
+			OauthUrl:    os.Getenv("OAUTH_URL"),
 		},
 		ServerConfig: shared.ServerConfig{
 			Port:        os.Getenv("PORT"),
@@ -61,7 +53,7 @@ func GetConfig() *Config {
 
 func run(ctx context.Context) error {
 	config := GetConfig()
-	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags|log.Lshortfile)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -77,7 +69,6 @@ func run(ctx context.Context) error {
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			_, err := fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
 			if err != nil {
-				logger.Printf("error listening and serving: %s", err)
 				return
 			}
 		}
