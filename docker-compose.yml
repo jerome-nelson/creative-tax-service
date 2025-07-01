@@ -1,3 +1,4 @@
+# TODO: Add monitoring to stack
 name: creative-tax-app
 services:
   pages:

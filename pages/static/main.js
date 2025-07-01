@@ -1,13 +1,56 @@
 const JIRA_URI = "//activecampaign.atlassian.net";
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const transformAPI = {
+    generateEntry: async (event, taskName, heading, description) => {
+        const btn = event.target;
+        try {
+            if (btn) {
+                btn.classList.add('loading');
+                btn.innerText = 'Loading';
+                btn.setAttribute('disabled', true);
+            }
+
+            const response = await fetch(`//localhost:5000/transform`, {
+                method: "POST",
+                credentials: 'include',
+                body: JSON.stringify({
+                    taskName,
+                    heading,
+                    description
+                })
+            });
+            if (!response.ok) {
+                throw new Error("Fetch failed");
+            }
+            if (btn) {
+                btn.classList.remove('loading');
+                btn.innerText = 'Regenerate Tax Entry';
+                btn.removeAttribute('disabled');
+            }
+
+            const result = await response.json();
+            document.getElementById(`${taskName}-result`).innerHTML = `<div>${result.heading}</div><div>${result.description}</div><ul><li>${result.links}</li></ul>`
+        } catch (e) {
+            if (btn) {
+                btn.classList.remove('loading');
+                btn.innerText = 'Generate Tax Entry';
+                btn.removeAttribute('disabled');
+            }
+            console.error(e);
+        }
+    }
+}
+
 const JiraAPI = {
     loadIssues: async () => {
         try {
+            // TODO: Doesn't work
             const data = await JiraAPI.fetchIssues();
             document.getElementById('issues').style.display = 'block';
             JiraAPI.setIssueList(data.issues);
 
-            // Later
+            // TODO: Later
             loadDatePicker();
 
         } catch (e) {
@@ -28,17 +71,18 @@ const JiraAPI = {
             const listItem = document.createElement('li');
             listItem.setAttribute('class', 'issue-type');
 
-            ///
-            const button = document.createElement('button');
-            button.addEventListener('click', event => console.log(key, event, description));
-            button.setAttribute('class', 'select-issue cta small');
-            button.innerText = 'Select Issue';
+            /// TODO: Later
+            // const button = document.createElement('button');
+            // button.addEventListener('click', event => console.log(key, event, description));
+            // button.setAttribute('class', 'select-issue cta small');
+            // button.innerText = 'Select Issue';
 
             ///
-            const button2 = document.createElement('button');
-            button2.addEventListener('click', event => console.log(key, event, description));
-            button2.setAttribute('class', 'generate-issue cta small');
-            button2.innerText = 'Generate Tax Entry';
+            const button = document.createElement('button');
+            // TODO: Parse Description
+            button.addEventListener('click', event => transformAPI.generateEntry(event, key, summary, summary));
+            button.setAttribute('class', 'generate-issue cta small');
+            button.innerText = 'Generate Tax Entry';
 
             listItem.innerHTML = `
                     <section class="issue-wrapper">
@@ -64,11 +108,11 @@ const JiraAPI = {
                             <h4 class="title">${key} - ${summary}</h4>
                             <aside class="sub-issue">Last Updated on ${addFormattedTime(updated)}</aside>
                             <aside class="button-group"></aside>
+                            <div id="${key}-result"></div>
                         </article>
                     </section>
                 `;
             listItem.querySelector(`#${key}-details .button-group`).appendChild(button);
-            listItem.querySelector(`#${key}-details .button-group`).appendChild(button2);
             list.appendChild(listItem);
         }
 
@@ -200,7 +244,7 @@ const USER_KEY = 'user';
 
 async function setAuth() {
     const {name, email, picture} = await JiraAPI.fetchUser();
-    window.document.title = `Hello ${name} | ` + window.document.title;
+    window.document.title = `Hello ${name}` + window.document.title.replace('Log in', ' ');
     localStorage.setItem(USER_KEY, JSON.stringify({name, email, picture}));
     const avatar = document.createElement('div');
     avatar.setAttribute('class', 'avatar');

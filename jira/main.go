@@ -16,14 +16,17 @@ import (
 type Config struct {
 	shared.ServerConfig
 	shared.JiraConfig
+	LLMConfig
 }
 
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
-
 	allowMethod := shared.MethodGuard(log)
+	authGuard := shared.AuthGuard(log)
+
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
 	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config.JiraConfig)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config.JiraConfig)))
+	mux.HandleFunc("/transform", allowMethod(http.MethodPost, authGuard(handleGeneratedIssueTransform(log, config.LLMConfig))))
 	mux.Handle("/temp", http.StripPrefix("/", allowMethod(http.MethodGet, handleTempIssue(log))))
 }
 
@@ -47,6 +50,9 @@ func GetConfig() *Config {
 			Port:        os.Getenv("PORT"),
 			Host:        os.Getenv("HOST"),
 			ServiceName: os.Getenv("SERVICE_NAME"),
+		},
+		LLMConfig: LLMConfig{
+			ApiKey: os.Getenv("LLM_API_KEY"),
 		},
 	}
 }
