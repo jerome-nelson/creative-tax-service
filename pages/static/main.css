@@ -9,26 +9,28 @@
     --ultra-violet: #5f5aa2ff;
     --yinmn-blue: #355691ff;
     --onyx: #3f4045ff;
-
+    --smooth-red: #e01563;
     --honey-comb-yellow: #c19604;
-
 
     /* Tetradic (Double Complementary) */
     --brand-base: #355691ff;
-    --accent-highlight:#5f5aa2ff;
+    --accent-highlight: #5f5aa2ff;
 
     --base-font-color: #F8F8F8;
     --variant-font-color: #B9B9C9;
     --base-heading-font: "Lato", sans-serif;
     --base-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
+
     /** CTA **/
-    --cta-styles-radius: 12px;
+    --cta-styles-radius-large: 12px;
+    --cta-styles-radius: 4px;
 }
 
 html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
 }
 
 body {
@@ -84,7 +86,7 @@ p {
     -webkit-user-select: none;
     user-select: none;
     cursor: pointer;
-    border-radius: var(--cta-styles-radius);
+    border-radius: var(--cta-styles-radius-large);
     text-align: center;
     white-space: nowrap;
     border: none;
@@ -107,7 +109,7 @@ p {
     padding: 4px 8px;
     text-align: center;
     color: var(--base-font-color);
-    border-radius: var(--cta-styles-radius);
+    border-radius: var(--cta-styles-radius-large);
     font-weight: 700;
     text-transform: capitalize;
     -webkit-user-select: none;
@@ -119,4 +121,64 @@ p {
     align-items: center;
     text-decoration: none;
     display: inline-flex;
+}
+
+.loader {
+    position: relative;
+    display: inline-block;
+    width: 80px;
+    height: 80px;
+}
+
+.loader::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 80px;
+    margin: 10px;
+    border-radius: 50%;
+    border: 10px solid #5f5aaf;
+    border-color: #5f5aaf transparent #5f5aaf transparent;
+    animation: ring_spin 2s linear infinite;
+}
+
+.loader.large::after {
+    height: 480px;
+    width: 480px;
+    border-width: 40px;
+}
+
+.loader.large {
+    width: 500px;
+    height: 500px;
+}
+
+.loader.inverse::after {
+    border-color: var(--base-font-color) transparent var(--base-font-color) transparent;
+}
+
+
+@keyframes ring_spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.toast.error {
+    font-family: var(--base-heading-font);
+    max-width: 300px;
+    position:absolute;
+    left: 50%;
+    margin-left: -150px;
+    bottom: 10px;
+    background-color: var(--smooth-red);
+    color: var(--base-font-color);
+    font-size: 20px;
+    padding:10px;
+    text-align:center;
+    border-radius: var(--cta-styles-radius-large);
+    box-shadow: 0px 0px 24px -1px rgba(56, 56, 56, 1);
 }

@@ -91,6 +91,47 @@ const JiraAPI = {
             //     credentials: 'include'
             // })
 
+            // const response4 = await fetch("https://api.atlassian.com/graphql", {
+            //     "headers": {
+            //         Authorization: `Bearer ${COOKIES.oauth_token}`,
+            //         "accept": "application/json, multipart/mixed, multipart/mixed; deferSpec=20220824",
+            //         "accept-language": "en,pl;q=0.9,en-US;q=0.8",
+            //         "cache-control": "no-cache",
+            //         "content-type": "application/json",
+            //         "credentials": "same-origin",
+            //         "x-experimentalapi": "JiraIssueSearch"
+            //     },
+            //     "referrerPolicy": "no-referrer",
+            //     "body": "{\"query\":\"query MyQuery {\\n  jira {\\n    issueSearchByJql(\\n      cloudId: \\\"<REDACTED\\\", \\n      jql: \\\"\\\"\\\"\\n        (issuetype = Task) AND (\\n          assignee = currentUser() OR \\n          reporter = currentUser() OR \\n          watcher = currentUser() OR \\n          issue in commentedBy(currentUser())\\n        )\\n      \\\"\\\"\\\"\\n    ) {\\n      ... on JiraIssueSearchByJql {\\n        jql\\n      }\\n    }\\n  }\\n}\",\"operationName\":\"MyQuery\"}",
+            //     "method": "POST",
+            //     "mode": "cors",
+            //     "credentials": "include"
+            // });
+
+            // const response3 = await fetch("https://api.atlassian.com/graphql", {
+            //     "headers": {
+            //         Authorization: `Bearer ${COOKIES.oauth_token}`,
+            //         "accept": "application/json, multipart/mixed, multipart/mixed; deferSpec=20220824",
+            //         "accept-language": "en,pl;q=0.9,en-US;q=0.8",
+            //         "cache-control": "no-cache",
+            //         "content-type": "application/json",
+            //         "credentials": "same-origin",
+            //         "pragma": "no-cache",
+            //         "priority": "u=1, i",
+            //         "sec-ch-ua": "\"Google Chrome\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+            //         "sec-ch-ua-mobile": "?0",
+            //         "sec-ch-ua-platform": "\"macOS\"",
+            //         "sec-fetch-dest": "empty",
+            //         "sec-fetch-mode": "cors",
+            //         "sec-fetch-site": "same-origin"
+            //     },
+            //     "referrerPolicy": "no-referrer",
+            //     "body": "{\"query\":\"query MyQuery {\\n  me {\\n    user {\\n      ... on CustomerUser {\\n        id\\n        email\\n        canonicalAccountId\\n        zoneinfo\\n      }\\n      ... on AppUser {\\n        id\\n        name\\n      }\\n      ... on AtlassianAccountUser {\\n        id\\n        email\\n      }\\n    }\\n  }\\n}\",\"operationName\":\"MyQuery\"}",
+            //     "method": "POST",
+            //     "mode": "cors",
+            //     "credentials": "include"
+            // });
+
             const response = await fetch(`//localhost:5000/temp`, {
                 method: 'GET',
                 credentials: 'include'

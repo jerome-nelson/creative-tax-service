@@ -1,5 +1,23 @@
 ## Creative Tax Repo
 
+
+### Env Setup
+
+```
+SERVICE_NAME=lowercased-name-of-service
+
+# Jira App Details
+CLIENT_SECRET=
+CLIENT_ID=
+OAUTH_URL=https://auth.atlassian.com/oauth/token
+REDIRECT_URL=
+
+# Server Details
+PORT=
+HOST=
+
+```
+
 * Look into the Serve Multiplexer
     - Path matching
     - How do urls get sanitised

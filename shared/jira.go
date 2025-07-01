@@ -91,15 +91,6 @@ func SetJiraCookie(w http.ResponseWriter, log *log.Logger, details Oauth) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "tenant.session.token",
-		Value:    details.AccessToken,
-		Path:     "/",
-		MaxAge:   offsetExpiry,
-		HttpOnly: false,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
-	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_token",
 		Value:    details.AccessToken,
 		Path:     "/",

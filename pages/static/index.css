@@ -52,7 +52,7 @@
     padding: 0;
 }
 .issue-type {
-    border-radius: var(--cta-styles-radius);
+    border-radius: var(--cta-styles-radius-large);
     background: var(--base-font-color);
     margin: 8px 0;
     padding: 8px;
@@ -102,7 +102,7 @@ issue-details {
 }
 
 .faux-datepicker {
-    border-radius: var(--cta-styles-radius);
+    border-radius: var(--cta-styles-radius-large);
     position: absolute;
     height: 100px;
     width: 300px;

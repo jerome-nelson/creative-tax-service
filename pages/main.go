@@ -12,17 +12,7 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	"github.com/joho/godotenv"
 )
-
-//ToStudy
-// Context
-// defer
-// Difference between := and var
-// * & - what do these mean?
-// get used to writing anon functions
-// What is a rune?
 
 type Page struct {
 	Title     string
@@ -35,66 +25,12 @@ type Config struct {
 	shared.JiraConfig
 }
 
-func handleAuth(log *log.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		tmpl, err := template.ParseFiles("templates/auth.html")
-		if err != nil {
-			http.Error(w, "Error parsing template", http.StatusInternalServerError)
-			log.Println("Template parsing error:", err)
-			return
-		}
-
-		data := Page{
-			Title:   "Auth Page",
-			Message: "This is the auth page. You will be redirected back to home",
-		}
-
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			http.Error(w, "Error executing template", http.StatusInternalServerError)
-			log.Println("Template execution error:", err)
-		}
-	}
-
-}
-
-func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-
-		data := Page{
-			Title:     "Zend",
-			ScriptUrl: template.JS(shared.SetAuthUrl(config.JiraConfig)),
-		}
-		tmpl, err := template.ParseFiles("templates/index.html")
-		if err != nil {
-			http.Error(w, "Error parsing template", http.StatusInternalServerError)
-			log.Println("root template error", err)
-			return
-		}
-
-		// TODO: Review why ScriptUrl is being double escaped when it doesn't needed to be
-		if err = tmpl.Execute(w, data); err != nil {
-			http.Error(w, "Error executing template", http.StatusInternalServerError)
-			log.Println("error applying template", err)
-		}
-	}
-}
-
-func handleStaticFiles(log *log.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("attempted to access: " + r.URL.Path)
-		http.ServeFile(w, r, r.URL.Path)
-	}
-}
-
 func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 
 	allowMethod := shared.MethodGuard(log)
+	webTypesWhitelist := allowWebTypesOnly(log)
 
-	// Add a template system for index routes
-	// Serve 404 if template not found
-	// Nice to have: Move templates and static into pages folder
-	mux.Handle("/static/", http.StripPrefix("/", allowMethod(http.MethodGet, handleStaticFiles(log))))
+	mux.Handle("/static/", http.StripPrefix("/", allowMethod(http.MethodGet, webTypesWhitelist(handleStaticFiles(log)))))
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
 	mux.HandleFunc("/auth", allowMethod(http.MethodGet, handleAuth(log)))
 	mux.HandleFunc("/", allowMethod(http.MethodGet, handleRoot(log, config)))
@@ -110,10 +46,6 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 }
 
 func GetConfig() *Config {
-	err := godotenv.Load("pages.env")
-	if err != nil {
-		log.Fatal("Error loading env variables")
-	}
 	return &Config{
 		JiraConfig: shared.JiraConfig{
 			RedirectUrl: os.Getenv("REDIRECT_URL"),
@@ -128,8 +60,6 @@ func GetConfig() *Config {
 }
 
 func run(ctx context.Context) error {
-
-	// Look into hoisting these higher?
 	config := GetConfig()
 	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
 
@@ -147,6 +77,7 @@ func run(ctx context.Context) error {
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			_, err := fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
 			if err != nil {
+				logger.Printf("error listening and serving: %s", err)
 				return
 			}
 		}

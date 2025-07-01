@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{{.Title}}</title>
-    <link rel="stylesheet" href="/main.css" />
+    <link rel="stylesheet" href="/static/main.css" />
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
@@ -37,11 +37,10 @@
     ii.     Auth failed (with follow-up actions)
     iii.    Auth succeeded (w/ a redirect)
  -->
-This is the auth page
 
-<div id="fatal-error" style="display: none">
-    Something went wrong.
-    (retry logic here)
+<div style="display: flex;justify-content: center;align-items: center;height: 100%;" id="data-loader" class="section">
+    <div class="loader large inverse"></div>
 </div>
+<div id="fatal-error" class="toast error" style='display:none'>Something went wrong (add a more useful message)</div>
 </body>
 </html>

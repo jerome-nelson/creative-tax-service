@@ -6,6 +6,8 @@ import (
 	"github.com/rs/cors"
 	"log"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 )
 
@@ -45,6 +47,23 @@ func MethodGuard(log *log.Logger) func(method string, h http.HandlerFunc) http.H
 			if r.Method != method {
 				log.Printf("method %s attempted on %s\n", r.Method, r.URL.Path)
 				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
+
+			h(w, r)
+		}
+	}
+}
+
+func RestrictExtensions(log *log.Logger, allowed map[string]bool) func(h http.HandlerFunc) http.HandlerFunc {
+	log.Println("restrict extensions initialised")
+	return func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			ext := strings.ToLower(path.Ext(r.URL.Path))
+
+			if !allowed[ext] {
+				log.Printf("client requested forbidden file type: %s", r.URL.Path)
+				http.Error(w, "Server Error", http.StatusForbidden)
 				return
 			}
 
