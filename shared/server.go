@@ -27,7 +27,7 @@ func HandleCors(mux *http.ServeMux, log *log.Logger) http.Handler {
 		// Make ALLOWED ORIGINS an .env array
 		// Same with Allowed Headers ..mb
 		AllowedOrigins: []string{"http://localhost:5000", "http://localhost:7000"},
-		AllowedHeaders: []string{"X-Code", "Set-Cookie"},
+		AllowedHeaders: []string{"X-Code", "Set-Cookie", "x-refresh"},
 	}).Handler(mux)
 }
 

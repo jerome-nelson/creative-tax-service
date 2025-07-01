@@ -215,7 +215,8 @@ const JiraAPI = {
             const COOKIES = getCookies();
             const response = await fetch(`//localhost:5000/refresh`, {
                 method: 'POST',
-                headers: {'x-refresh': COOKIES['refresh_token']}
+                headers: {'x-refresh': COOKIES['refresh_token']},
+                credentials: 'include'
             });
             if (!response.ok) {
                 throw new Error('Request failed');
