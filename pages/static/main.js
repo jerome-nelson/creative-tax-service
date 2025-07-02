@@ -1,11 +1,9 @@
 const JIRA_URI = "//activecampaign.atlassian.net";
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
+const REFRESH_COUNT_KEY = 'refresh_token';
 const transformAPI = {
     generateEntry: async (event, taskName, heading, description) => {
         const btn = event.target;
-
-        // TODO: Parse HTML description into a list of text entries
         const parsedDescription = [...description.childNodes.values().filter(node => {
             if (node.nodeName.toLowerCase() === "ul") {
                 return true;
@@ -54,7 +52,6 @@ const transformAPI = {
 const JiraAPI = {
     loadIssues: async () => {
         try {
-            // TODO: Cannot fetch issues from JIRA - using faux endpoint atm
             const data = await JiraAPI.fetchIssues();
             document.getElementById('issues').style.display = 'block';
             JiraAPI.setIssueList(data.issues);
@@ -62,10 +59,6 @@ const JiraAPI = {
             console.error("Fetch err: ", e)
         }
     },
-
-    // Look into work logs and parse to get total time - but has to be limited to the creator
-    // + add time of others but without names and details
-    // Add user time as a ratio of total time worked on task
     setIssueList: (issues) => {
         const list = document.createElement('ul');
         list.id = 'issues-list';
@@ -76,15 +69,7 @@ const JiraAPI = {
             const listItem = document.createElement('li');
             listItem.setAttribute('class', 'issue-type');
 
-            /// TODO: Later
-            // const button = document.createElement('button');
-            // button.addEventListener('click', event => console.log(key, event, description));
-            // button.setAttribute('class', 'select-issue cta small');
-            // button.innerText = 'Select Issue';
-
-            ///
             const button = document.createElement('button');
-            // TODO: Parse Description
             button.setAttribute('class', 'generate-issue cta small');
             button.innerText = 'Generate Tax Entry';
 
@@ -180,7 +165,7 @@ const JiraAPI = {
                 throw new Error('Request failed');
             }
             const refreshCount = Number(localStorage.getItem('refresh_token')) ?? 0;
-            localStorage.setItem('refresh_token', refreshCount + 1);
+            localStorage.setItem(REFRESH_COUNT_KEY, refreshCount + 1);
 
             window.location.reload();
         } catch (e) {
@@ -211,16 +196,14 @@ async function setAuth() {
     document.getElementById("logout").style.display = "block";
     document.getElementById("user").appendChild(avatar);
     document.getElementById("user").append(` Welcome! ${name}`);
+    document.getElementById('user-details').style.display = 'flex';
     document.getElementById("authed").style.display = "block";
-    document.getElementById('main-logo').style.display = 'none';
     document.getElementById("login").style.display = "none";
 
-    // TODO: Should have a load state
     JiraAPI.loadIssues()
 }
 
 function deleteCookie(name) {
-    // DEV
     console.log("Deleting cookie: ", name);
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
@@ -228,6 +211,7 @@ function deleteCookie(name) {
 function logout() {
     COOKIE_LIST.forEach(deleteCookie);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(REFRESH_COUNT_KEY);
     window.location.reload();
 }
 
@@ -250,7 +234,7 @@ function getCookies() {
 function monitorAuthTime() {
     const COOKIES = getCookies();
     const expires = new Date(COOKIES.expiry);
-    const refreshCount = localStorage.getItem('refresh_token');
+    const refreshCount = localStorage.getItem('');
 
     document.getElementById('refresh-token').innerHTML = `${refreshCount}`;
 

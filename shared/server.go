@@ -17,17 +17,13 @@ type ServerConfig struct {
 	ServiceName string
 }
 
-// TODO: Allow options to be overridden/merged if needed
 func HandleCors(mux *http.ServeMux, log *log.Logger) http.Handler {
 	log.Println("cors initialised")
 	return cors.New(cors.Options{
 		AllowCredentials: true,
 		Debug:            false,
-		// For one service only - jira/main.go
-		// Make ALLOWED ORIGINS an .env array
-		// Same with Allowed Headers ..mb
-		AllowedOrigins: []string{"http://localhost:5000", "http://localhost:7000"},
-		AllowedHeaders: []string{"X-Code", "Set-Cookie", "x-refresh"},
+		AllowedOrigins:   []string{"http://localhost:5000", "http://localhost:7000"},
+		AllowedHeaders:   []string{"X-Code", "Set-Cookie", "x-refresh"},
 	}).Handler(mux)
 }
 

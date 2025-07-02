@@ -46,7 +46,6 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 			return
 		}
 
-		// TODO: Review why ScriptUrl is being double escaped when it doesn't needed to be
 		if err = tmpl.Execute(w, data); err != nil {
 			http.Error(w, "Error executing template", http.StatusInternalServerError)
 			log.Println("error applying template", err)

@@ -40,7 +40,6 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	handler = shared.HandleCors(mux, log)
-	// Dont like the pattern difference. Fix
 	addRoutes(mux, config, log)
 	return handler
 }

@@ -21,33 +21,24 @@ type LLMResponse struct {
 	Links       []string `json:"links"`
 }
 
-func handleGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.HandlerFunc {
-	// Take file content
-	// 	i. Needs a file size limit < 20MB, s
-	// ii. Should be limited to .json only
-	// Take out all the content and structure into
-	// 	Heading
-	// 	Content
-	// 	Comments
-	// 	Atlassian AI stuff (if allowed/enabled)
-	// Allow multiple
+type JSONPayload struct {
+	Heading     string   `json:"heading"`
+	Description []string `json:"description"`
+	TaskName    string   `json:"taskName"`
+}
+
+func handlePartiallyGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 
-		// Parse JSON input
-		var payload struct {
-			Heading     string   `json:"heading"`
-			Description []string `json:"description"`
-			TaskName    string   `json:"taskName"`
-		}
+		var payload JSONPayload
 
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, "invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		// Read style-guide.md from disk (hardcoded path)
-		styleGuidePath := "jira/style-guide.md" // Change to wherever it's stored
+		styleGuidePath := "jira/style-guide.md"
 		styleGuideContent, err := os.ReadFile(styleGuidePath)
 		if err != nil {
 			http.Error(w, "failed to read style guide", http.StatusInternalServerError)
@@ -55,7 +46,6 @@ func handleGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.Handl
 			return
 		}
 
-		// Create Gemini client
 		client, err := genai.NewClient(ctx, &genai.ClientConfig{
 			APIKey: config.ApiKey,
 		})
@@ -65,7 +55,6 @@ func handleGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.Handl
 			return
 		}
 
-		// Construct prompt
 		prompt := fmt.Sprintf(
 			"%s\n\nUse the above style guide to transform the following input:\n\nHeading: %s\nDescription: %s\nTask Name: %s",
 			string(styleGuideContent),
@@ -90,7 +79,6 @@ func handleGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.Handl
 			},
 		}
 
-		// Call Gemini
 		log.Printf("generating results for prompt")
 		rawText, err := client.Models.GenerateContent(
 			ctx,

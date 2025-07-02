@@ -14,7 +14,6 @@
         window.addEventListener('load', async () => {
             window.document.title = `Log in | ` + window.document.title;
             await JiraAPI.startAuthFlow();
-            // Prevents FOUCs
             document.getElementById("auth-container").style.display = "block";
         });
 
@@ -44,14 +43,16 @@
 
 <section class="wrapper center">
     <div class="section">
-        <div id="main-logo" class="logo sub-section"></div>
+        <header class="user-header">
+            <div id="main-logo" class="logo sub-section"></div>
+            <div id="user-details" class="user-details" style="display: none">
+                <div id="user"></div>
+                <button id="logout" class="cta-inverse logout-cta" style="display: none" onclick="logout()">Logout</button>
+            </div>
+        </header>
 
-        <div id="auth-container">
+        <div id="auth-container" style="display: none">
             <div id="authed">
-                <div class="user-details">
-                    <div id="user"></div>
-                    <button id="logout" class="cta-inverse logout-cta" style="display: none" onclick="logout()">Logout</button>
-                </div>
                 <div id="issues" style="display: none">
                     <header class="issue-heading">
                         <h3 class="heading">(Static /Fake Data) Issues</h3>

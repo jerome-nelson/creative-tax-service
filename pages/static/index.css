@@ -132,3 +132,8 @@ issue-details {
     border-radius: 20px;
     margin-right: 8px;
 }
+
+.user-header {
+    display: flex;
+    justify-content: space-between;
+}

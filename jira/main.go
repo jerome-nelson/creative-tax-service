@@ -26,7 +26,7 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 	mux.HandleFunc("/health", allowMethod(http.MethodGet, shared.HandleHealthCheck(log)))
 	mux.HandleFunc("/refresh", allowMethod(http.MethodPost, handleRefreshToken(log, config.JiraConfig)))
 	mux.HandleFunc("/oauth", allowMethod(http.MethodPost, handleGenerateToken(log, config.JiraConfig)))
-	mux.HandleFunc("/transform", allowMethod(http.MethodPost, authGuard(handleGeneratedIssueTransform(log, config.LLMConfig))))
+	mux.HandleFunc("/transform", allowMethod(http.MethodPost, authGuard(handlePartiallyGeneratedIssueTransform(log, config.LLMConfig))))
 	mux.Handle("/temp", http.StripPrefix("/", allowMethod(http.MethodGet, handleTempIssue(log))))
 }
 
