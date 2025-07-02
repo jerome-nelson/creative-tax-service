@@ -36,9 +36,9 @@ func handleGeneratedIssueTransform(log *log.Logger, config LLMConfig) http.Handl
 
 		// Parse JSON input
 		var payload struct {
-			Heading     string `json:"heading"`
-			Description string `json:"description"`
-			TaskName    string `json:"taskName"`
+			Heading     string   `json:"heading"`
+			Description []string `json:"description"`
+			TaskName    string   `json:"taskName"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {

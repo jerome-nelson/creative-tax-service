@@ -10,9 +10,6 @@
     <meta name="referrer" content="no-referrer"/>
 
     <script src="/static/main.js"></script>
-    <!-- TODO Later -->
-    <link rel="stylesheet" href="/static/datepicker.min.css"/>
-    <script src="/static/datepicker-full.min.js"></script>
     <script>
         window.addEventListener('load', async () => {
             window.document.title = `Log in | ` + window.document.title;
@@ -58,16 +55,17 @@
                 <div id="issues" style="display: none">
                     <header class="issue-heading">
                         <h3 class="heading">(Static /Fake Data) Issues</h3>
-                        <div class="datepicker-container">
-                            <button id="select-by-date" class="cta-inverse" onclick="togglePicker()">
-                                Filter by Date
-                            </button>
+<!--                        TODO: Maybe later -->
+<!--                        <div class="datepicker-container">-->
+<!--                            <button id="select-by-date" class="cta-inverse" onclick="togglePicker()">-->
+<!--                                Filter by Date-->
+<!--                            </button>-->
 
-                            <div style="visibility: hidden;" id="date-picker-faux" class="faux-datepicker">
-                                <!-- TODO: Fix the datepicker container -->
-                                <div class="datepicker"></div>
-                            </div>
-                        </div>
+<!--                            <div style="visibility: hidden;" id="date-picker-faux" class="faux-datepicker">-->
+<!--                                &lt;!&ndash; TODO: Fix the datepicker container &ndash;&gt;-->
+<!--                                <div class="datepicker"></div>-->
+<!--                            </div>-->
+<!--                        </div>-->
                     </header>
                     <div id="issue-container"></div>
                 </div>

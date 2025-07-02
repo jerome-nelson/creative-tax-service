@@ -4,6 +4,14 @@ const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oc
 const transformAPI = {
     generateEntry: async (event, taskName, heading, description) => {
         const btn = event.target;
+
+        // TODO: Parse HTML description into a list of text entries
+        const parsedDescription = [...description.childNodes.values().filter(node => {
+            if (node.nodeName.toLowerCase() === "ul") {
+                return true;
+            }
+        }).map(node => node.innerText)];
+        console.log(parsedDescription);
         try {
             if (btn) {
                 btn.classList.add('loading');
@@ -17,7 +25,7 @@ const transformAPI = {
                 body: JSON.stringify({
                     taskName,
                     heading,
-                    description
+                    description: parsedDescription
                 })
             });
             if (!response.ok) {
@@ -30,11 +38,12 @@ const transformAPI = {
             }
 
             const result = await response.json();
-            document.getElementById(`${taskName}-result`).innerHTML = `<div>${result.heading}</div><div>${result.description}</div><ul><li>${result.links}</li></ul>`
+            document.getElementById(`${taskName}-result`).innerHTML = `<hr /><div>${result.heading}</div><div>${result.description}</div><ul><li>${result.links}</li></ul>`
         } catch (e) {
             if (btn) {
                 btn.classList.remove('loading');
-                btn.innerText = 'Generate Tax Entry';
+                btn.classList.add('failed');
+                btn.innerText = 'Try Again? (Generation Failed)';
                 btn.removeAttribute('disabled');
             }
             console.error(e);
@@ -45,14 +54,10 @@ const transformAPI = {
 const JiraAPI = {
     loadIssues: async () => {
         try {
-            // TODO: Doesn't work
+            // TODO: Cannot fetch issues from JIRA - using faux endpoint atm
             const data = await JiraAPI.fetchIssues();
             document.getElementById('issues').style.display = 'block';
             JiraAPI.setIssueList(data.issues);
-
-            // TODO: Later
-            loadDatePicker();
-
         } catch (e) {
             console.error("Fetch err: ", e)
         }
@@ -66,7 +71,7 @@ const JiraAPI = {
         list.id = 'issues-list';
         list.setAttribute('class', 'issues-list');
         for (const issue of issues) {
-            const {key, fields: {summary, created, updated, description, issuetype }} = issue;
+            const {key, renderedFields: { description }, fields: {summary, created, updated, issuetype }} = issue;
             localStorage.setItem(`issue-${key}`, description);
             const listItem = document.createElement('li');
             listItem.setAttribute('class', 'issue-type');
@@ -80,7 +85,6 @@ const JiraAPI = {
             ///
             const button = document.createElement('button');
             // TODO: Parse Description
-            button.addEventListener('click', event => transformAPI.generateEntry(event, key, summary, summary));
             button.setAttribute('class', 'generate-issue cta small');
             button.innerText = 'Generate Tax Entry';
 
@@ -106,12 +110,16 @@ const JiraAPI = {
                         </aside>
                         <article class="issue-details" id="${key}-details">
                             <h4 class="title">${key} - ${summary}</h4>
+                            <div id="${key}-description" class="task-description"></div>
                             <aside class="sub-issue">Last Updated on ${addFormattedTime(updated)}</aside>
                             <aside class="button-group"></aside>
                             <div id="${key}-result"></div>
                         </article>
                     </section>
                 `;
+            listItem.querySelector(`#${key}-description`).innerHTML = description;
+            button.addEventListener('click', event => transformAPI.generateEntry(event, key, summary, listItem.querySelector(`#${key}-description`)));
+
             listItem.querySelector(`#${key}-details .button-group`).appendChild(button);
             list.appendChild(listItem);
         }
@@ -119,8 +127,7 @@ const JiraAPI = {
         document.getElementById('issue-container').append(list);
     },
     triggerPopup: (url) => {
-        let params = `status=no,location=no,toolbar=no,menubar=no,
-    width=600,height=800,popup=yes`;
+        let params = `status=no,location=no,toolbar=no,menubar=no,width=600,height=800,popup=yes`;
         window.open(url, '_blank', params);
     },
     fetchIssues: async () => {
@@ -130,51 +137,6 @@ const JiraAPI = {
             const COOKIES = getCookies();
             const auth = `${data.email}:${COOKIES.oauth_token}`;
             const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC`);
-            // const response = fetch(`${JIRA_URI}/rest/api/3/search/jql?fields=*all&jql=${jql}`, {
-            //     method: 'GET',
-            //     credentials: 'include'
-            // })
-
-            // const response4 = await fetch("https://api.atlassian.com/graphql", {
-            //     "headers": {
-            //         Authorization: `Bearer ${COOKIES.oauth_token}`,
-            //         "accept": "application/json, multipart/mixed, multipart/mixed; deferSpec=20220824",
-            //         "accept-language": "en,pl;q=0.9,en-US;q=0.8",
-            //         "cache-control": "no-cache",
-            //         "content-type": "application/json",
-            //         "credentials": "same-origin",
-            //         "x-experimentalapi": "JiraIssueSearch"
-            //     },
-            //     "referrerPolicy": "no-referrer",
-            //     "body": "{\"query\":\"query MyQuery {\\n  jira {\\n    issueSearchByJql(\\n      cloudId: \\\"<REDACTED\\\", \\n      jql: \\\"\\\"\\\"\\n        (issuetype = Task) AND (\\n          assignee = currentUser() OR \\n          reporter = currentUser() OR \\n          watcher = currentUser() OR \\n          issue in commentedBy(currentUser())\\n        )\\n      \\\"\\\"\\\"\\n    ) {\\n      ... on JiraIssueSearchByJql {\\n        jql\\n      }\\n    }\\n  }\\n}\",\"operationName\":\"MyQuery\"}",
-            //     "method": "POST",
-            //     "mode": "cors",
-            //     "credentials": "include"
-            // });
-
-            // const response3 = await fetch("https://api.atlassian.com/graphql", {
-            //     "headers": {
-            //         Authorization: `Bearer ${COOKIES.oauth_token}`,
-            //         "accept": "application/json, multipart/mixed, multipart/mixed; deferSpec=20220824",
-            //         "accept-language": "en,pl;q=0.9,en-US;q=0.8",
-            //         "cache-control": "no-cache",
-            //         "content-type": "application/json",
-            //         "credentials": "same-origin",
-            //         "pragma": "no-cache",
-            //         "priority": "u=1, i",
-            //         "sec-ch-ua": "\"Google Chrome\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
-            //         "sec-ch-ua-mobile": "?0",
-            //         "sec-ch-ua-platform": "\"macOS\"",
-            //         "sec-fetch-dest": "empty",
-            //         "sec-fetch-mode": "cors",
-            //         "sec-fetch-site": "same-origin"
-            //     },
-            //     "referrerPolicy": "no-referrer",
-            //     "body": "{\"query\":\"query MyQuery {\\n  me {\\n    user {\\n      ... on CustomerUser {\\n        id\\n        email\\n        canonicalAccountId\\n        zoneinfo\\n      }\\n      ... on AppUser {\\n        id\\n        name\\n      }\\n      ... on AtlassianAccountUser {\\n        id\\n        email\\n      }\\n    }\\n  }\\n}\",\"operationName\":\"MyQuery\"}",
-            //     "method": "POST",
-            //     "mode": "cors",
-            //     "credentials": "include"
-            // });
 
             const response = await fetch(`//localhost:5000/temp`, {
                 method: 'GET',
@@ -186,10 +148,6 @@ const JiraAPI = {
             }
 
             return await response.json();
-            // TOOD: Inject datepicker dynamically
-            // const datePicker = document.createElement('script');
-            // datePicker.src = '/static/datepicker-full.min.js';
-            // document.body.append(datePicker);
         } catch (e) {
             console.error(e);
         }
@@ -331,19 +289,6 @@ function getSavedUser() {
     }
 
     return {};
-}
-
-function loadDatePicker() {
-    // show view
-    const elem = document.querySelector('.datepicker');
-    try {
-        const datepicker = new window.Datepicker(elem, {});
-        window.test = datepicker;
-        datepicker.show();
-        console.log("Datepicker loaded: ", datepicker);
-    } catch (e) {
-        console.error(e)
-    }
 }
 
 function addFormattedTime(timestamp) {

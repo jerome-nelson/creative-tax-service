@@ -61,7 +61,7 @@ func GetConfig() *Config {
 
 func run(ctx context.Context) error {
 	config := GetConfig()
-	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags|log.Lshortfile)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
