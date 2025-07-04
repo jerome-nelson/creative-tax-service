@@ -137,3 +137,10 @@ issue-details {
     display: flex;
     justify-content: space-between;
 }
+
+.user-extras {
+    border-radius: 10px;
+    border: 1px solid red;
+    background: orange;
+    justify-content: center;
+}

@@ -11,27 +11,19 @@ import (
 	"os"
 )
 
-type TokenPayload struct {
-	GrantType    string `json:"grantType"`
-	RedirectURI  string `json:"redirectUri"`
-	ClientID     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-	Code         string `json:"code"`
-	RefreshToken string `json:"refreshToken"`
-}
-
+// TODO: Add a generic grant handler for both refresh and auth
 func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.Header.Get("X-Code")
 		if code == "" {
 			http.Error(w, "Missing X-Code", http.StatusBadRequest)
 		}
-		values := TokenPayload{
-			GrantType:    "authorization_code",
-			Code:         code,
-			ClientID:     config.Cid,
-			ClientSecret: config.Secret,
-			RedirectURI:  config.RedirectUrl,
+		values := map[string]string{
+			"grant_type":    "authorization_code",
+			"code":          code,
+			"client_id":     config.Cid,
+			"client_secret": config.Secret,
+			"redirect_uri":  config.RedirectUrl,
 		}
 
 		jsonValue, _ := json.Marshal(values)
@@ -75,6 +67,7 @@ func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.Handler
 	}
 }
 
+// TODO: Refactor both JIRA auth calls to allow the calling of one function for both
 func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var token string
@@ -82,11 +75,11 @@ func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerF
 			http.Error(w, "Unauthorised", http.StatusUnauthorized)
 		}
 
-		values := TokenPayload{
-			GrantType:    "refresh_token",
-			RefreshToken: token,
-			ClientID:     config.Cid,
-			ClientSecret: config.Secret,
+		values := map[string]string{
+			"grant_type":    "refresh_token",
+			"refresh_token": token,
+			"client_id":     config.Cid,
+			"client_secret": config.Secret,
 		}
 
 		jsonValue, _ := json.Marshal(values)
@@ -139,7 +132,7 @@ func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerF
 func handleTempIssue(log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var anyJson map[string]interface{}
-		jsonFile, err := os.ReadFile("./_bin/issues-1-sample.json")
+		jsonFile, err := os.ReadFile("./jira/_bin/issues-1-sample.json")
 		err2 := json.Unmarshal(jsonFile, &anyJson)
 		if err != nil || err2 != nil {
 			if err != nil {
@@ -152,7 +145,6 @@ func handleTempIssue(log *log.Logger) http.HandlerFunc {
 			return
 		}
 
-		log.Println("Successfully Opened ./jira/issues-1-sample.json")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(anyJson)

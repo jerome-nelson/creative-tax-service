@@ -38,6 +38,7 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 		data := Page{
 			Title:     "Zend",
 			ScriptUrl: template.JS(shared.SetAuthUrl(config.JiraConfig)),
+			DevMode:   config.DevMode,
 		}
 		tmpl, err := template.ParseFiles("pages/templates/index.html")
 		if err != nil {

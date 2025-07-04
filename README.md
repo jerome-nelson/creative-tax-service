@@ -9,6 +9,9 @@ Why? Because I was tired of manually doing this every month
     (Note: `offline_access` is required for the `refresh_token` flow to be triggered)
 
 
+## Dev Mode
+<TODO>
+
 ### All Environment Variables Needed
 These environment variables can be set as command line args or on a OS-level
 
@@ -24,6 +27,11 @@ REDIRECT_URL=<<taken-from-developer-app>
 # Server Details
 PORT=<port to launch server on>
 HOST=<hostname to use>
+DEV_MODE=<boolean>
+
+## Cors
+ALLOWED_ORIGINS=<origin-string>,<origin2-string>
+ALLOWED_HEADERS=<header-string1>,<header-string2>
 
 ## LLM 
 LLM_API_KEY=<developer-api-key>

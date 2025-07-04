@@ -1,4 +1,5 @@
-const JIRA_URI = "//activecampaign.atlassian.net";
+const JIRA_URI = "activecampaign.atlassian.net";
+const IFRAME_PARAMS = `status=no,location=no,toolbar=no,menubar=no,width=600,height=800,popup=yes`;
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const REFRESH_COUNT_KEY = 'refresh_token';
 const transformAPI = {
@@ -9,7 +10,6 @@ const transformAPI = {
                 return true;
             }
         }).map(node => node.innerText)];
-        console.log(parsedDescription);
         try {
             if (btn) {
                 btn.classList.add('loading');
@@ -17,7 +17,7 @@ const transformAPI = {
                 btn.setAttribute('disabled', true);
             }
 
-            const response = await fetch(`//localhost:5000/transform`, {
+            const response = await fetch(`/api/transform`, {
                 method: "POST",
                 credentials: 'include',
                 body: JSON.stringify({
@@ -112,21 +112,29 @@ const JiraAPI = {
         document.getElementById('issue-container').append(list);
     },
     triggerPopup: (url) => {
-        let params = `status=no,location=no,toolbar=no,menubar=no,width=600,height=800,popup=yes`;
-        window.open(url, '_blank', params);
+        window.open(url, '_blank', IFRAME_PARAMS);
     },
     fetchIssues: async () => {
         try {
-            //
-            const data = getSavedUser();
             const COOKIES = getCookies();
-            const auth = `${data.email}:${COOKIES.oauth_token}`;
-            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC`);
+            const user = getSavedUser();
+            const apiKey =  sessionStorage.getItem('apiKey');
+            let auth = `Bearer ${COOKIES.oauth_token}`;
+            let token = '';
+            if (user.email && apiKey) {
+                token = btoa(`${user.email}:${apiKey}`);
+                auth = "Basic " + token;
+            }
 
-            const response = await fetch(`//localhost:5000/temp`, {
+            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC`);
+            const response = await fetch(`/cors/${JIRA_URI}/rest/api/3/search/jql?expand=renderedFields&fields=issuetype,summary,description,created,updated&jql=${jql}`, {
                 method: 'GET',
-                credentials: 'include'
-            })
+                headers: {
+                    Accept: 'application/json',
+                    Authorization: auth,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
             if (!response.ok) {
                 throw new Error("Fetch failed");
@@ -156,7 +164,7 @@ const JiraAPI = {
     refreshSession: async () => {
         try {
             const COOKIES = getCookies();
-            const response = await fetch(`//localhost:5000/refresh`, {
+            const response = await fetch(`/api/refresh`, {
                 method: 'POST',
                 headers: {'x-refresh': COOKIES['refresh_token']},
                 credentials: 'include'
@@ -177,8 +185,8 @@ const JiraAPI = {
     startAuthFlow: async () => {
         const COOKIES = getCookies();
         if (!!COOKIES?.oauth_token) {
-            monitorAuthTime();
             await setAuth();
+            document.dispatchEvent(new CustomEvent('auth-loaded'));
         }
     }
 }
@@ -197,10 +205,31 @@ async function setAuth() {
     document.getElementById("user").appendChild(avatar);
     document.getElementById("user").append(` Welcome! ${name}`);
     document.getElementById('user-details').style.display = 'flex';
+    document.getElementById('api-token-panel').style.display = 'block';
     document.getElementById("authed").style.display = "block";
     document.getElementById("login").style.display = "none";
 
-    JiraAPI.loadIssues()
+    if (sessionStorage.getItem('apiKey')) {
+        document.getElementById('api-panel').style.display = 'none';
+        document.getElementById('remove-token').style.display = 'block';
+    } else {
+        document.getElementById("api-panel").style.display = 'block';
+        document.getElementById('remove-token').style.display = 'none';
+    }
+    document.getElementById('remove-api-token').addEventListener('click', event => {
+        event.preventDefault();
+        sessionStorage.removeItem('apiKey');
+        document.getElementById('api-panel').style.display = 'block';
+        document.getElementById('remove-token').style.display = 'none';
+    });
+    document.getElementById('api-panel').addEventListener('submit', event => {
+        event.preventDefault();
+        const apiKey = event.target.querySelector('input[name="add-api-token"]').value;
+        sessionStorage.setItem('apiKey', apiKey);
+        document.getElementById('api-panel').style.display = 'none';
+        document.getElementById('remove-token').style.display = 'block';
+    });
+    await JiraAPI.loadIssues()
 }
 
 function deleteCookie(name) {
@@ -211,6 +240,11 @@ function deleteCookie(name) {
 function logout() {
     COOKIE_LIST.forEach(deleteCookie);
     localStorage.removeItem(USER_KEY);
+
+    sessionStorage.removeItem('apiKey');
+    document.getElementById("api-panel").style.display = 'block';
+    document.getElementById('remove-token').style.display = 'none';
+
     localStorage.removeItem(REFRESH_COUNT_KEY);
     window.location.reload();
 }
@@ -231,38 +265,6 @@ function getCookies() {
     }, {});
 }
 
-function monitorAuthTime() {
-    const COOKIES = getCookies();
-    const expires = new Date(COOKIES.expiry);
-    const refreshCount = localStorage.getItem('');
-
-    document.getElementById('refresh-token').innerHTML = `${refreshCount}`;
-
-    const checkingAuthTime = setInterval(async () => {
-        const now = new Date();
-        const diffMs = expires - now;
-        let countDown = Math.floor(diffMs / 1000);
-        const hrs = Math.floor(countDown / 3600);
-        const mins = Math.floor((countDown % 3600) / 60);
-        const secs = countDown % 60;
-        document.getElementById("time-left").innerHTML = [
-            hrs.toString().padStart(2, '0'),
-            mins.toString().padStart(2, '0'),
-            secs.toString().padStart(2, '0')
-        ].join(':');
-
-        if (document.getElementById("reauth-required").style.display === 'none') {
-            document.getElementById("reauth-required").style.display = "block";
-        }
-
-        if (countDown <= 10) {
-            clearInterval(checkingAuthTime);
-            await JiraAPI.refreshSession();
-        }
-    }, 1000)
-
-}
-
 
 function getSavedUser() {
 
@@ -278,15 +280,4 @@ function getSavedUser() {
 function addFormattedTime(timestamp) {
     const date = new Date(timestamp);
     return `${date.getDay()} ${shortMonths[date.getMonth() - 1]} ${date.getFullYear()}`;
-}
-
-// Might be replaced by Datepicker functionality
-function togglePicker() {
-    const pickerElem = document.getElementById('date-picker-faux');
-    if (pickerElem.style.visibility !== 'hidden') {
-        pickerElem.style.visibility = 'hidden';
-        return;
-    }
-
-    pickerElem.style.visibility = 'visible';
 }

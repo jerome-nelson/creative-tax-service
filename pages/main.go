@@ -18,6 +18,7 @@ type Page struct {
 	Title     string
 	Message   string
 	ScriptUrl template.JS
+	DevMode   bool
 }
 
 type Config struct {
@@ -54,6 +55,7 @@ func GetConfig() *Config {
 			Port:        os.Getenv("PORT"),
 			Host:        os.Getenv("HOST"),
 			ServiceName: os.Getenv("SERVICE_NAME"),
+			DevMode:     os.Getenv("DEV_MODE") == "true",
 		},
 	}
 }

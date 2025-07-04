@@ -7,7 +7,7 @@
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
-            fetch('//localhost:5000/oauth', {
+            fetch('/api/oauth', {
                 credentials: 'include',
                 method: 'POST',
                 headers: {

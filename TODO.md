@@ -1,15 +1,16 @@
 ## Services/Features
+- [ ] Hide Dev Details behind .env
 - [ ] Split the servers
 - [ ] Integrate k8s into build/docker-compose 
-- [ ] Setup HTTPS
-  - [ ] Combine both services under one DNS (must be docker-friendly)
+- [x] Setup HTTPS
+  - [x] Combine both services under one DNS (must be docker-friendly)
       * How to do this without coupling both services?
         * `/api` - jira, `/` - pages
         * Allow services to communicate with each other internally
 - [ ] Verify and set server timeouts for endpoints
 - [ ] Improve AuthGuard to actually check if valid, against JIRA API
 - [ ] Add a generic grant handler for both refresh and auth
-- [ ] Allow CORs options to be overridden/merged if needed
+- [x] Allow CORs options to be overridden/merged if needed
   - ALLOWED_ORIGINs + ALLOWED_HEADERS
 - [ ] Move Origin CORs args into .env/.yaml or somekind of config
 - [ ] Finish Transform Handler
@@ -52,6 +53,7 @@
 - [ ] Oauth Scopes - can I type them stronger? (look into the Jira Go lib and see how they do it)
 
 ## Nice to Have's / Do after/during production release
+- [ ] Review garbage collection and performance
 - [ ] Add monitoring (to cover both FE and BE) - Sentry/Grafana/NewRelic?
   - Set some Dev logging on FE/BE
 - [ ] Add offline mode

@@ -1,0 +1,17 @@
+{
+	debug
+}
+
+creative-tax.local {
+      handle /cors/* {
+        uri strip_prefix /cors
+        reverse_proxy cors_proxy:8080
+      }
+	handle_path /api* {
+		reverse_proxy jira
+	}
+
+	handle {
+		reverse_proxy pages
+	}
+}
