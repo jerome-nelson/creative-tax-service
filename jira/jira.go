@@ -132,7 +132,7 @@ func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerF
 func handleTempIssue(log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var anyJson map[string]interface{}
-		jsonFile, err := os.ReadFile("./jira/issues-1-sample.json")
+		jsonFile, err := os.ReadFile("./jira/_bin/issues-1-sample.json")
 		err2 := json.Unmarshal(jsonFile, &anyJson)
 		if err != nil || err2 != nil {
 			if err != nil {
@@ -145,7 +145,6 @@ func handleTempIssue(log *log.Logger) http.HandlerFunc {
 			return
 		}
 
-		log.Println("Successfully Opened ./jira/issues-1-sample.json")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(anyJson)

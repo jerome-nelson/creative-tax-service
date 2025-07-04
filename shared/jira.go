@@ -17,15 +17,13 @@ type JiraConfig struct {
 }
 
 type Oauth struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`
-	ExpiresIn   int    `json:"expires_in"`
-	// Requires the scope `offline_access` to be set
+	AccessToken  string `json:"access_token"`
+	TokenType    string `json:"token_type"`
+	Scope        string `json:"scope"`
+	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-// TODO: Nedds stronger types
 type OauthScopes = []string
 
 func SetAuthUrl(config JiraConfig) string {
@@ -50,7 +48,7 @@ func SetAuthUrl(config JiraConfig) string {
 	baseURL := "https://auth.atlassian.com/authorize"
 	params := url.Values{}
 	params.Set("audience", "api.atlassian.com")
-	params.Set("client_id", config.Cid) // fill your actual client_id
+	params.Set("client_id", config.Cid)
 	params.Set("redirect_uri", config.RedirectUrl)
 	params.Set("response_type", "code")
 	params.Set("prompt", "consent")
@@ -81,8 +79,6 @@ func AuthGuard(log *log.Logger) func(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// SetJiraCookies
-// Sets Jira Secure cookies for client. Must have a buffer of at least 61 seconds.
 func SetJiraCookie(w http.ResponseWriter, log *log.Logger, details Oauth) {
 	offsetExpiry := details.ExpiresIn - 60
 	if offsetExpiry < 0 != false {
@@ -131,9 +127,9 @@ func SetJiraCookie(w http.ResponseWriter, log *log.Logger, details Oauth) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	if err := Encode(w, http.StatusOK, map[string]string{
-		"scope": details.Scope,
-		"type":  details.TokenType,
+	if err := Encode(w, http.StatusOK, Oauth{
+		Scope:     details.Scope,
+		TokenType: details.TokenType,
 	}); err != nil {
 		log.Println(err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

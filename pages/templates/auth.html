@@ -7,7 +7,7 @@
     <script>
         window.onload = function () {
             const params = new URLSearchParams(window.location.search);
-            fetch('//localhost:5000/oauth', {
+            fetch('/api/oauth', {
                 credentials: 'include',
                 method: 'POST',
                 headers: {
@@ -30,13 +30,6 @@
     </script>
 </head>
 <body>
-<!--
- 1. Needs styling
- 2. States to cover
-    i.      Loading Auth
-    ii.     Auth failed (with follow-up actions)
-    iii.    Auth succeeded (w/ a redirect)
- -->
 
 <div style="display: flex;justify-content: center;align-items: center;height: 100%;" id="data-loader" class="section">
     <div class="loader large inverse"></div>

@@ -38,6 +38,7 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 		data := Page{
 			Title:     "Zend",
 			ScriptUrl: template.JS(shared.SetAuthUrl(config.JiraConfig)),
+			DevMode:   config.DevMode,
 		}
 		tmpl, err := template.ParseFiles("pages/templates/index.html")
 		if err != nil {
@@ -46,7 +47,6 @@ func handleRoot(log *log.Logger, config *Config) http.HandlerFunc {
 			return
 		}
 
-		// TODO: Review why ScriptUrl is being double escaped when it doesn't needed to be
 		if err = tmpl.Execute(w, data); err != nil {
 			http.Error(w, "Error executing template", http.StatusInternalServerError)
 			log.Println("error applying template", err)

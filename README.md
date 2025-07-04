@@ -1,35 +1,44 @@
 ## Creative Tax Repo
+A Go-Based Service that generates IP-Box/Creative Tax compliant entries, using Oauth and Google Gemini. 
+Why? Because I was tired of manually doing this every month
+
+### Requirements
+* A JIRA Developer Application to be set up 
+* These Oauth scopes:
+  - `"offline_access", "read:me", "read:project.avatar:jira", "read:filter:jira", "read:group:jira", "read:issue:jira", "read:attachment:jira", "read:comment:jira", "read:comment.property:jira", "read:field:jira", "read:issue-details:jira", "read:field.default-value:jira", "read:field.option:jira", "read:field:jira", "read:group:jira"`
+    (Note: `offline_access` is required for the `refresh_token` flow to be triggered)
 
 
-### Env Setup
+## Dev Mode
+<TODO>
+
+### All Environment Variables Needed
+These environment variables can be set as command line args or on a OS-level
 
 ```
 SERVICE_NAME=lowercased-name-of-service
 
 # Jira App Details
-CLIENT_SECRET=
-CLIENT_ID=
+CLIENT_SECRET=<taken-from-developer-app>
+CLIENT_ID=<taken-from-developer-app>
 OAUTH_URL=https://auth.atlassian.com/oauth/token
-REDIRECT_URL=
+REDIRECT_URL=<<taken-from-developer-app> 
 
 # Server Details
-PORT=
-HOST=
+PORT=<port to launch server on>
+HOST=<hostname to use>
+DEV_MODE=<boolean>
 
+## Cors
+ALLOWED_ORIGINS=<origin-string>,<origin2-string>
+ALLOWED_HEADERS=<header-string1>,<header-string2>
+
+## LLM 
+LLM_API_KEY=<developer-api-key>
 ```
 
-* Look into the Serve Multiplexer
-    - Path matching
-    - How do urls get sanitised
-* Look into the Template lib
-  - How urls and data gets sanitised before injecting
-  - A more intuitive, straightforward way of injecting CSS,JS into the HTML files
-* What's in it
-* FInish the splitting of the servers
-* Needs Okta integration for AC usage of JIRA api specifically :-/ 
-  * How to enable this but also to allow general use?
-  * For now use CSV?
-* Start llm-service
-* Add a docker-compose config
-* Add Grafana to it? (Or NewRelic) (Maybe)
-* Add offline mode (nice to have)
+### Approach
+* Each service must be:
+  i. Scale-able/non-blocking when operating
+  ii. Fault-tolerant
+  iii. Error hardened

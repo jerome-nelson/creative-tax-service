@@ -4,20 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Generate Creative Tax Statements with Ease!"/>
-    <title>{{.Title}}</title>
+    <title>Log in | {{.Title}}</title>
     <link rel="stylesheet" href="/static/main.css"/>
     <link rel="stylesheet" href="/static/index.css"/>
     <meta name="referrer" content="no-referrer"/>
 
     <script src="/static/main.js"></script>
-    <!-- TODO Later -->
-    <link rel="stylesheet" href="/static/datepicker.min.css"/>
-    <script src="/static/datepicker-full.min.js"></script>
+    {{ if .DevMode }}
+        <script src="/static/dev.js"></script>
+    {{end}}
     <script>
         window.addEventListener('load', async () => {
-            window.document.title = `Log in | ` + window.document.title;
             await JiraAPI.startAuthFlow();
-            // Prevents FOUCs
             document.getElementById("auth-container").style.display = "block";
         });
 
@@ -34,41 +32,48 @@
 <div id="offline-mode" style="display: none">
     App is offline. Changes are now saved to localstorage
 </div>
-<!--  DEV -->
+
+{{ if .DevMode }}
 <div id="dev-details">
     <h3>Dev Mode</h3>
     <div id="reauth-required" style="display: none">
         Cookies will expire in: <span id="time-left"></span> <br/>
         Session refreshed: <span id="refresh-token"></span>
-        <button onclick="JiraAPI.loadIssues()">Fetch Issues</button>
+        <div style="display: flex">
+            <button onclick="JiraAPI.loadIssues()">Fetch Issues</button>
+        </div>
     </div>
 </div>
-<!-- End of DEV -->
+{{ end }}
 
 <section class="wrapper center">
     <div class="section">
-        <div id="main-logo" class="logo sub-section"></div>
+        <header class="user-header">
+            <div id="main-logo" class="logo sub-section"></div>
+            <div id="user-details" class="user-details" style="display: none">
+                <div id="user"></div>
+                <button id="logout" class="cta-inverse logout-cta" style="display: none" onclick="logout()">Logout</button>
+            </div>
+        </header>
 
-        <div id="auth-container">
+        <div id="api-token-panel" class="user-details user-extras" style="display: none">
+            <form id="api-panel">
+                    <h4>Add API token</h4>
+                    <input name="add-api-token" />
+                    <button type="submit">Use API Token Instead</button>
+            </form>
+            <div id="remove-token" style="display: none">
+                Token added temporarily
+                <button id="remove-api-token">Remove API Key</button>
+            </div>
+        </div>
+
+        <div id="auth-container" style="display: none">
             <div id="authed">
-                <div class="user-details">
-                    <div id="user"></div>
-                    <button id="logout" class="cta-inverse logout-cta" style="display: none" onclick="logout()">Logout</button>
-                </div>
                 <div id="issues" style="display: none">
-                    <heading class="issue-heading">
+                    <header class="issue-heading">
                         <h3 class="heading">Issues</h3>
-                        <div class="datepicker-container">
-                            <button id="select-by-date" class="cta-inverse" onclick="togglePicker()">
-                                Filter by Date
-                            </button>
-
-                            <div style="visibility: hidden;" id="date-picker-faux" class="faux-datepicker">
-                                <!-- TODO: Fix the datepicker container -->
-                                <div class="datepicker"></div>
-                            </div>
-                        </div>
-                    </heading>
+                    </header>
                     <div id="issue-container"></div>
                 </div>
             </div>

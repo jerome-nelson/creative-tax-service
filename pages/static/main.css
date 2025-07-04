@@ -25,6 +25,7 @@
     /** CTA **/
     --cta-styles-radius-large: 12px;
     --cta-styles-radius: 4px;
+    --cta-disabled-bg: var(--onyx)
 }
 
 html, body {
@@ -95,6 +96,11 @@ p {
     align-items: center;
     text-decoration: none;
     display: inline-flex;
+}
+
+.cta[disabled] {
+    background: var(--cta-disabled-bg);
+    cursor: not-allowed;
 }
 
 .cta.small {

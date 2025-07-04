@@ -18,6 +18,7 @@ type Page struct {
 	Title     string
 	Message   string
 	ScriptUrl template.JS
+	DevMode   bool
 }
 
 type Config struct {
@@ -40,7 +41,6 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	handler = shared.HandleCors(mux, log)
-	// Dont like the pattern difference. Fix
 	addRoutes(mux, config, log)
 	return handler
 }
@@ -55,13 +55,14 @@ func GetConfig() *Config {
 			Port:        os.Getenv("PORT"),
 			Host:        os.Getenv("HOST"),
 			ServiceName: os.Getenv("SERVICE_NAME"),
+			DevMode:     os.Getenv("DEV_MODE") == "true",
 		},
 	}
 }
 
 func run(ctx context.Context) error {
 	config := GetConfig()
-	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "["+config.ServiceName+"] ", log.LstdFlags|log.Lshortfile)
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
