@@ -6,35 +6,27 @@ import (
 	"github.com/rs/cors"
 	"log"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
 )
 
 type ServerConfig struct {
-	Port        string
-	Host        string
-	ServiceName string
-	DevMode     bool
-}
-
-type CorsConfig struct {
+	Port           string
+	Host           string
+	ServiceName    string
+	DevMode        bool
 	AllowedOrigins []string
-	AllowedMethods []string
+	AllowedHeaders []string
 }
 
-func HandleCors(mux *http.ServeMux, log *log.Logger) http.Handler {
+func HandleCors(mux *http.ServeMux, log *log.Logger, config ServerConfig) http.Handler {
 	log.Println("cors initialised")
-
-	allowedOrigins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
-	allowedHeaders := strings.Split(os.Getenv("ALLOWED_HEADERS"), ",")
-
 	return cors.New(cors.Options{
 		AllowCredentials: true,
-		Debug:            true,
-		AllowedOrigins:   allowedOrigins,
-		AllowedHeaders:   allowedHeaders,
+		Debug:            config.DevMode,
+		AllowedOrigins:   config.AllowedOrigins,
+		AllowedHeaders:   config.AllowedHeaders,
 	}).Handler(mux)
 }
 

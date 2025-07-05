@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -40,7 +41,7 @@ func addRoutes(mux *http.ServeMux, config *Config, log *log.Logger) {
 func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
-	handler = shared.HandleCors(mux, log)
+	handler = shared.HandleCors(mux, log, config.ServerConfig)
 	addRoutes(mux, config, log)
 	return handler
 }
@@ -52,10 +53,12 @@ func GetConfig() *Config {
 			Cid:         os.Getenv("CLIENT_ID"),
 		},
 		ServerConfig: shared.ServerConfig{
-			Port:        os.Getenv("PORT"),
-			Host:        os.Getenv("HOST"),
-			ServiceName: os.Getenv("SERVICE_NAME"),
-			DevMode:     os.Getenv("DEV_MODE") == "true",
+			Port:           os.Getenv("PORT"),
+			Host:           os.Getenv("HOST"),
+			ServiceName:    os.Getenv("SERVICE_NAME"),
+			DevMode:        os.Getenv("DEV_MODE") == "true",
+			AllowedOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+			AllowedHeaders: strings.Split(os.Getenv("ALLOWED_HEADERS"), ","),
 		},
 	}
 }

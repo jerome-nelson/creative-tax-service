@@ -3,6 +3,17 @@
 
 /* General Styles */
 :root {
+
+    --slack-purple: #611f69;
+    --slack-deep-purple: #4a154b;
+    --slack-green: #2eb67d;
+    --slack-red: #e01e5a;
+    --slack-blue: #1264a3;
+    --slack-text-primary: #1d1c1d;
+    --slack-text-secondary: #616061;
+    --slack-bg: #ffffff;
+    --slack-border: #e8e8e8;
+
     /* CSS HEX */
     --raisin-black: #30292fff;
     --english-violet: #413f54ff;
@@ -25,7 +36,10 @@
     /** CTA **/
     --cta-styles-radius-large: 12px;
     --cta-styles-radius: 4px;
-    --cta-disabled-bg: var(--onyx)
+    --cta-disabled-bg: var(--onyx);
+
+    /** Warning **/
+    --warning-bg: var(--honey-comb-yellow);
 }
 
 html, body {
@@ -173,13 +187,8 @@ p {
     }
 }
 
-.toast.error {
+.toast, .toast.error {
     font-family: var(--base-heading-font);
-    max-width: 300px;
-    position:absolute;
-    left: 50%;
-    margin-left: -150px;
-    bottom: 10px;
     background-color: var(--smooth-red);
     color: var(--base-font-color);
     font-size: 20px;
@@ -187,4 +196,16 @@ p {
     text-align:center;
     border-radius: var(--cta-styles-radius-large);
     box-shadow: 0px 0px 24px -1px rgba(56, 56, 56, 1);
+}
+
+.toast.fixed {
+    max-width: 300px;
+    position:absolute;
+    left: 50%;
+    margin-left: -150px;
+    bottom: 10px;
+}
+
+.toast.warning {
+    background-color: var(--warning-bg);
 }

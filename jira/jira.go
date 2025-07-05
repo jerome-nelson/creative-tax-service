@@ -11,7 +11,6 @@ import (
 	"os"
 )
 
-// TODO: Add a generic grant handler for both refresh and auth
 func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.Header.Get("X-Code")
@@ -67,7 +66,6 @@ func handleGenerateToken(log *log.Logger, config shared.JiraConfig) http.Handler
 	}
 }
 
-// TODO: Refactor both JIRA auth calls to allow the calling of one function for both
 func handleRefreshToken(log *log.Logger, config shared.JiraConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var token string

@@ -64,7 +64,7 @@ const JiraAPI = {
         list.id = 'issues-list';
         list.setAttribute('class', 'issues-list');
         for (const issue of issues) {
-            const {key, renderedFields: { description }, fields: {summary, created, updated, issuetype }} = issue;
+            const {key, renderedFields: { description }, fields: {summary, updated, issuetype }} = issue;
             localStorage.setItem(`issue-${key}`, description);
             const listItem = document.createElement('li');
             listItem.setAttribute('class', 'issue-type');
@@ -77,17 +77,15 @@ const JiraAPI = {
                     <section class="issue-wrapper">
                         <aside class="issue-icon">
 <!--                            <img src="${issuetype.iconUrl}" title="${issuetype.name} icon" alt="${issuetype.name} icon" />-->
-<!-- Temporary -->
-                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns" width="16px" height="16px" viewBox="0 0 16 16" version="1.1" data-ember-extension="1">
-                                    <!-- Generator: Sketch 3.5.2 (25235) - http://www.bohemiancoding.com/sketch -->
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 16 16" version="1.1" data-ember-extension="1">
                                     <title>bug</title>
                                     <desc>Created with Sketch.</desc>
                                     <defs/>
-                                    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
-                                        <g id="bug" sketch:type="MSArtboardGroup">
-                                            <g id="Bug" sketch:type="MSLayerGroup" transform="translate(1.000000, 1.000000)">
-                                                <rect id="Rectangle-36" fill="#E5493A" sketch:type="MSShapeGroup" x="0" y="0" width="14" height="14" rx="2"/>
-                                                <path d="M10,7 C10,8.657 8.657,10 7,10 C5.343,10 4,8.657 4,7 C4,5.343 5.343,4 7,4 C8.657,4 10,5.343 10,7" id="Fill-2" fill="#FFFFFF" sketch:type="MSShapeGroup"/>
+                                    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                        <g id="bug">
+                                            <g id="Bug" transform="translate(1.000000, 1.000000)">
+                                                <rect id="Rectangle-36" fill="#E5493A" x="0" y="0" width="14" height="14" rx="2"/>
+                                                <path d="M10,7 C10,8.657 8.657,10 7,10 C5.343,10 4,8.657 4,7 C4,5.343 5.343,4 7,4 C8.657,4 10,5.343 10,7" id="Fill-2" fill="#FFFFFF" />
                                             </g>
                                         </g>
                                     </g>

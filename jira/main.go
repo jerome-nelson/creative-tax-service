@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -34,7 +35,7 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
 	addRoutes(mux, config, log)
-	handler = shared.HandleCors(mux, log)
+	handler = shared.HandleCors(mux, log, config.ServerConfig)
 	return handler
 }
 
@@ -47,9 +48,11 @@ func GetConfig() *Config {
 			OauthUrl:    os.Getenv("OAUTH_URL"),
 		},
 		ServerConfig: shared.ServerConfig{
-			Port:        os.Getenv("PORT"),
-			Host:        os.Getenv("HOST"),
-			ServiceName: os.Getenv("SERVICE_NAME"),
+			Port:           os.Getenv("PORT"),
+			Host:           os.Getenv("HOST"),
+			ServiceName:    os.Getenv("SERVICE_NAME"),
+			AllowedOrigins: strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+			AllowedHeaders: strings.Split(os.Getenv("ALLOWED_HEADERS"), ","),
 		},
 		LLMConfig: LLMConfig{
 			ApiKey: os.Getenv("LLM_API_KEY"),

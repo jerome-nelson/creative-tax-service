@@ -1,6 +1,10 @@
 ## Creative Tax Repo
 A Go-Based Service that generates IP-Box/Creative Tax compliant entries, using Oauth and Google Gemini. 
-Why? Because I was tired of manually doing this every month
+Why? Because I was tired of manually doing this every month.
+
+1. Uses Oauth to grab information from JIRA Cloud using the REST (Ver 2) API
+2. Grabs issues worked on by the user via Oauth
+  - User has the option to use an API token - in cases that the oauth connection doesn't work
 
 ### Requirements
 * A JIRA Developer Application to be set up 
@@ -10,7 +14,7 @@ Why? Because I was tired of manually doing this every month
 
 
 ## Dev Mode
-<TODO>
+(TODO section later)s
 
 ### All Environment Variables Needed
 These environment variables can be set as command line args or on a OS-level

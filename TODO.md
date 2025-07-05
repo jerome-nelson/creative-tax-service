@@ -1,5 +1,7 @@
 ## Services/Features
-- [ ] Hide Dev Details behind .env
+- [ ] remove cors-anywhere and replace with Caddy configured reverse proxy with cors-headers
+- [ ] Allow docker-compose volumes to be synced after starting docker services
+- [x] Hide Dev Details behind .env
 - [ ] Split the servers
 - [ ] Integrate k8s into build/docker-compose 
 - [x] Setup HTTPS
@@ -12,13 +14,17 @@
 - [ ] Add a generic grant handler for both refresh and auth
 - [x] Allow CORs options to be overridden/merged if needed
   - ALLOWED_ORIGINs + ALLOWED_HEADERS
-- [ ] Move Origin CORs args into .env/.yaml or somekind of config
+- [x] Move Origin CORs args into .env/.yaml or somekind of config
 - [ ] Finish Transform Handler
   - Needs to limit text response to 20MB
   - Add Comments as well
 - [ ] Allow selection of multiple issues
 
 ## Pages
+- [ ] UI Needed
+  - [ ] Add toast popup functionality
+  - [ ] Add cta active/loading/failure interactions ui
+- [ ] Combine fetch calls into a easy-to-use service
 - [ ] Finish styling HTML Auth Page
 - [ ] Finish covering states 
       i. Loading Auth
@@ -45,16 +51,23 @@
     - Should I centralise log functionality this way as well?
 
 ## JIRA
-- [ ] How can I grab issues from JIRA in a programmatic way?
-  - [ ] Create / use API for fetching issues via JQL
-  - [ ] (AC Specific) - How do I allow the user to grab issues when there are CORs protections set up?
+- [ ] Allow fetching of issues by month
+- [x] How can I grab issues from JIRA in a programmatic way?
+  - [x] Create / use API for fetching issues via JQL
+  - [x] (AC Specific) - How do I allow the user to grab issues when there are CORs protections set up?
     * Confirm exactly what the issue is - (there is a specific cookie that is set that I cannot get when fetching)
       * Confirm if this can be solved by using a domain name instead
-- [ ] Oauth Scopes - can I type them stronger? (look into the Jira Go lib and see how they do it)
 
 ## Nice to Have's / Do after/during production release
+- [ ] JIRA: Oauth Scopes - can I type them stronger? (look into the Jira Go lib and see how they do it)
 - [ ] Review garbage collection and performance
 - [ ] Add monitoring (to cover both FE and BE) - Sentry/Grafana/NewRelic?
   - Set some Dev logging on FE/BE
 - [ ] Add offline mode
   * User can save previous entries (saved as localstorage of some kind)
+
+## Features (nice to have)
+- [ ] UI Timeout
+  - Have a cap on the Refresh Token / Detect if the user is in-active and then logout them out
+- [ ] Styling
+  - Motif/Loading Icon
