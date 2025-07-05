@@ -38,7 +38,7 @@ func handlePartiallyGeneratedIssueTransform(log *log.Logger, config LLMConfig) h
 			return
 		}
 
-		styleGuidePath := "jira/style-guide.md"
+		styleGuidePath := "jira/templates/style-guide.md"
 		styleGuideContent, err := os.ReadFile(styleGuidePath)
 		if err != nil {
 			http.Error(w, "failed to read style guide", http.StatusInternalServerError)

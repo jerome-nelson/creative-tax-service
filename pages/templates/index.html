@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="/static/main.css"/>
     <link rel="stylesheet" href="/static/index.css"/>
     <meta name="referrer" content="no-referrer"/>
-
     <script src="/static/main.js"></script>
     {{ if .DevMode }}
         <script src="/static/dev.js"></script>
@@ -16,7 +15,6 @@
     <script>
         window.addEventListener('load', async () => {
             await JiraAPI.startAuthFlow();
-            document.getElementById("auth-container").style.display = "block";
         });
 
         window.addEventListener('message', event => {
@@ -47,7 +45,7 @@
 {{ end }}
 
 <section class="wrapper center">
-    <div class="section">
+    <div class="section" style="width: 100%">
         <header class="user-header">
             <div id="main-logo" class="logo sub-section"></div>
             <div id="user-details" class="user-details" style="display: none">
@@ -58,12 +56,15 @@
 
         <div id="api-token-panel" class="user-details toast warning" style="display: none">
             <form id="api-panel">
-                    <h4>Add API token</h4>
+                <label>
+                    Add API token
                     <input name="add-api-token" />
-                    <button class="cta-inverse" type="submit">Use API Token Instead</button>
+                </label>
+                <button class="cta-inverse" type="submit">Use API Token Instead</button>
+                <a href="https://id.atlassian.com/manage-profile/security" target="_blank">You can generate this here</a>
             </form>
             <div id="remove-token" style="display: none">
-                Token added temporarily
+                Token added temporarily (sessionStorage Token)
                 <button id="remove-api-token">Remove API Key</button>
             </div>
         </div>
@@ -73,12 +74,12 @@
                 <div id="issues" style="display: none">
                     <header class="issue-heading">
                         <h3 class="heading">Issues</h3>
+                        <div id="month-picker"></div>
                     </header>
-                    <div id="issue-container"></div>
+                    <div id="issue-container">
+                    </div>
                 </div>
             </div>
-
-            <!-- Make sure state param is re-added/should be generated server-side and added as a browser param to track user session -->
             <div id="login">
                 <h2 class="heading-2">
                     Easy IP tax statements!
