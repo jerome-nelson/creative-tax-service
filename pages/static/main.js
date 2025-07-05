@@ -220,10 +220,11 @@ async function setAuth() {
         document.getElementById('api-panel').style.display = 'block';
         document.getElementById('remove-token').style.display = 'none';
     });
-    document.getElementById('api-panel').addEventListener('submit', event => {
+    document.getElementById('api-panel').addEventListener('submit', async event => {
         event.preventDefault();
         const apiKey = event.target.querySelector('input[name="add-api-token"]').value;
         sessionStorage.setItem('apiKey', apiKey);
+        await JiraAPI.fetchIssues()
         document.getElementById('api-panel').style.display = 'none';
         document.getElementById('remove-token').style.display = 'block';
     });
