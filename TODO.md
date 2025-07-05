@@ -1,4 +1,5 @@
 ## Services/Features
+- [x] Add uniq-id state param to Oauth flow
 - [ ] remove cors-anywhere and replace with Caddy configured reverse proxy with cors-headers
 - [ ] Allow docker-compose volumes to be synced after starting docker services
 - [x] Hide Dev Details behind .env
@@ -22,6 +23,10 @@
 
 ## Pages
 - [ ] UI Needed
+  - [ ] Add Modal and (finish) Toast support  
+  - [ ] When no issues:
+    - SHow fallback
+    - Restyle the API token session storage panel (add tooltip/link context)
   - [ ] Add toast popup functionality
   - [ ] Add cta active/loading/failure interactions ui
 - [ ] Combine fetch calls into a easy-to-use service
@@ -51,7 +56,7 @@
     - Should I centralise log functionality this way as well?
 
 ## JIRA
-- [ ] Allow fetching of issues by month
+- [x] Allow fetching of issues by month
 - [x] How can I grab issues from JIRA in a programmatic way?
   - [x] Create / use API for fetching issues via JQL
   - [x] (AC Specific) - How do I allow the user to grab issues when there are CORs protections set up?
@@ -71,3 +76,5 @@
   - Have a cap on the Refresh Token / Detect if the user is in-active and then logout them out
 - [ ] Styling
   - Motif/Loading Icon
+- [ ] Addition of User Context (not needed/but nice educative exp.)
+  - uuid sessions stored server-side/with a user token that is used as a tracking header

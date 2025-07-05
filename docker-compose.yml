@@ -24,12 +24,11 @@ services:
     depends_on:
       - proxy
     volumes:
-      - ./pages/static:/app/pages/static
-      - ./pages/templates:/app/pages/templates
+      - ./pages/static:/usr/src/app/pages/static
+      - ./pages/templates:/usr/src/app/pages/templates
     build:
       context: .
       dockerfile: Dockerfile
-
       args:
         - BUILD_NAME=pages
         - SERVICE_PORT=80
@@ -38,6 +37,8 @@ services:
     ports:
       - 80
   jira:
+    volumes:
+      - ./jira/templates:/usr/src/app/jira/templates
     networks:
       - ct_network
     build:

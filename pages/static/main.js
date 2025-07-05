@@ -1,6 +1,11 @@
 const JIRA_URI = "activecampaign.atlassian.net";
 const IFRAME_PARAMS = `status=no,location=no,toolbar=no,menubar=no,width=600,height=800,popup=yes`;
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const longMonths = [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
+];
 const REFRESH_COUNT_KEY = 'refresh_token';
 const transformAPI = {
     generateEntry: async (event, taskName, heading, description) => {
@@ -50,13 +55,52 @@ const transformAPI = {
 }
 
 const JiraAPI = {
-    loadIssues: async () => {
+    formatDate: (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    },
+    loadIssues: async (startDate, endDate) => {
         try {
-            const data = await JiraAPI.fetchIssues();
-            document.getElementById('issues').style.display = 'block';
-            JiraAPI.setIssueList(data.issues);
+            let start = startDate;
+            let end = endDate;
+
+            if (!start || !end) {
+                const now = new Date();
+                let year = now.getFullYear();
+                let monthIndex = now.getMonth();
+                const defaultStart = new Date(year, monthIndex, 1);
+                const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+                const defaultEnd = new Date(year, monthIndex, lastDay);
+                start = JiraAPI.formatDate(defaultStart);
+                end = JiraAPI.formatDate(defaultEnd);
+            }
+
+            const data = await JiraAPI.fetchIssues(start, end);
+
+            // Switch statement
+            if (data.issues && data.issues.length > 0) {
+                JiraAPI.setIssueList(data.issues);
+            } else if (data.issues.length === 0) {
+                // TODO: Create a set list function
+                const list = document.createElement('ul');
+                list.id = 'issues-list';
+                list.setAttribute('class', 'issues-list');
+                document.getElementById('issue-container').textContent = 'No issues found - try a different month';
+            } else {
+                const list = document.createElement('ul');
+                list.id = 'issues-list';
+                list.setAttribute('class', 'issues-list');
+                document.getElementById('issue-container').textContent = 'No issues found for this month - try a different one';
+            }
         } catch (e) {
-            console.error("Fetch err: ", e)
+            console.error("Fetch err: ", e);
+            const list = document.createElement('ul');
+            list.id = 'issues-list';
+            list.setAttribute('class', 'issues-list');
+            document.getElementById('issue-container').textContent = 'Unable to fetch issues';
+            return false;
         }
     },
     setIssueList: (issues) => {
@@ -64,7 +108,7 @@ const JiraAPI = {
         list.id = 'issues-list';
         list.setAttribute('class', 'issues-list');
         for (const issue of issues) {
-            const {key, renderedFields: { description }, fields: {summary, updated, issuetype }} = issue;
+            const {key, renderedFields: {description}, fields: {summary, updated, issuetype}} = issue;
             localStorage.setItem(`issue-${key}`, description);
             const listItem = document.createElement('li');
             listItem.setAttribute('class', 'issue-type');
@@ -77,7 +121,7 @@ const JiraAPI = {
                     <section class="issue-wrapper">
                         <aside class="issue-icon">
 <!--                            <img src="${issuetype.iconUrl}" title="${issuetype.name} icon" alt="${issuetype.name} icon" />-->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 16 16" version="1.1" data-ember-extension="1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 16 16" data-ember-extension="1">
                                     <title>bug</title>
                                     <desc>Created with Sketch.</desc>
                                     <defs/>
@@ -107,16 +151,17 @@ const JiraAPI = {
             list.appendChild(listItem);
         }
 
+        document.getElementById('issue-container').innerHTML = '';
         document.getElementById('issue-container').append(list);
     },
     triggerPopup: (url) => {
         window.open(url, '_blank', IFRAME_PARAMS);
     },
-    fetchIssues: async () => {
+    fetchIssues: async (start, end) => {
         try {
             const COOKIES = getCookies();
             const user = getSavedUser();
-            const apiKey =  sessionStorage.getItem('apiKey');
+            const apiKey = sessionStorage.getItem('apiKey');
             let auth = `Bearer ${COOKIES.oauth_token}`;
             let token = '';
             if (user.email && apiKey) {
@@ -124,7 +169,7 @@ const JiraAPI = {
                 auth = "Basic " + token;
             }
 
-            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"2025-05-01\" AND statusCategoryChangedDate <= \"2025-05-30\" ORDER BY statusCategoryChangedDate DESC`);
+            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"${start}\" AND statusCategoryChangedDate <= \"${end}\" ORDER BY statusCategoryChangedDate DESC`);
             const response = await fetch(`/cors/${JIRA_URI}/rest/api/3/search/jql?expand=renderedFields&fields=issuetype,summary,description,created,updated&jql=${jql}`, {
                 method: 'GET',
                 headers: {
@@ -196,16 +241,19 @@ async function setAuth() {
     const {name, email, picture} = await JiraAPI.fetchUser();
     window.document.title = `Hello ${name}` + window.document.title.replace('Log in', ' ');
     localStorage.setItem(USER_KEY, JSON.stringify({name, email, picture}));
-    const avatar = document.createElement('div');
-    avatar.setAttribute('class', 'avatar');
-    avatar.innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}"/>`;
-    document.getElementById("logout").style.display = "block";
-    document.getElementById("user").appendChild(avatar);
-    document.getElementById("user").append(` Welcome! ${name}`);
-    document.getElementById('user-details').style.display = 'flex';
-    document.getElementById('api-token-panel').style.display = 'block';
+    document.getElementById("auth-container").style.display = "block";
     document.getElementById("authed").style.display = "block";
     document.getElementById("login").style.display = "none";
+    document.getElementById('issues').style.display = 'block';
+
+    const avatar = document.createElement('div');
+    avatar.setAttribute('class', 'avatar');
+    avatar.innerHTML = `<img height="40" width="40" src="${picture}" alt="Avatar of ${name}" title="Welcome! ${name}"/>`;
+    document.getElementById("logout").style.display = "block";
+    document.getElementById("user").appendChild(avatar);
+    document.getElementById('user-details').style.display = 'flex';
+    document.getElementById('api-token-panel').style.display = 'block';
+
 
     if (sessionStorage.getItem('apiKey')) {
         document.getElementById('api-panel').style.display = 'none';
@@ -224,11 +272,13 @@ async function setAuth() {
         event.preventDefault();
         const apiKey = event.target.querySelector('input[name="add-api-token"]').value;
         sessionStorage.setItem('apiKey', apiKey);
-        await JiraAPI.fetchIssues()
+        await JiraAPI.loadIssues();
         document.getElementById('api-panel').style.display = 'none';
         document.getElementById('remove-token').style.display = 'block';
     });
-    await JiraAPI.loadIssues()
+
+    await JiraAPI.loadIssues();
+    loadMonthPicker();
 }
 
 function deleteCookie(name) {
@@ -279,4 +329,182 @@ function getSavedUser() {
 function addFormattedTime(timestamp) {
     const date = new Date(timestamp);
     return `${date.getDay()} ${shortMonths[date.getMonth() - 1]} ${date.getFullYear()}`;
+}
+
+function loadMonthPicker() {
+    const container = document.getElementById('month-picker');
+
+    if (!container) {
+        console.warn("Missing #month-picker element");
+        return;
+    }
+
+    container.innerHTML = '';
+    container.style.position = 'relative';
+
+    const months = [
+        "January", "February", "March", "April",
+        "May", "June", "July", "August",
+        "September", "October", "November", "December"
+    ];
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthIndex = now.getMonth();
+    let selectedYear = currentYear;
+
+    // Create CTA
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'cta-inverse';
+    labelDiv.textContent = `${months[currentMonthIndex]} ${currentYear} (press to select a prev. month)`;
+    container.appendChild(labelDiv);
+
+    // Create wrapper for ul + year navigation
+    const navWrapper = document.createElement('div');
+    navWrapper.className = 'month-nav-wrapper';
+    navWrapper.style.position = 'absolute';
+    navWrapper.style.top = '100%';
+    navWrapper.style.left = '0';
+    navWrapper.style.width = '100%';
+    navWrapper.style.background = 'white';
+    navWrapper.style.border = '1px solid #ccc';
+    navWrapper.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    navWrapper.style.display = 'none';
+    navWrapper.style.zIndex = '1000';
+
+    // Create header row with arrows and year
+    const header = document.createElement('div');
+    header.className = 'month-nav-header';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.padding = '8px 12px';
+    header.style.borderBottom = '1px solid #eee';
+
+    const leftArrow = document.createElement('span');
+    leftArrow.textContent = '←';
+    leftArrow.style.cursor = 'pointer';
+
+    const rightArrow = document.createElement('span');
+    rightArrow.textContent = '→';
+    rightArrow.style.cursor = 'pointer';
+
+    const yearLabel = document.createElement('span');
+    yearLabel.textContent = selectedYear;
+    yearLabel.style.fontWeight = 'bold';
+
+    header.appendChild(leftArrow);
+    header.appendChild(yearLabel);
+    header.appendChild(rightArrow);
+    navWrapper.appendChild(header);
+
+    // Create UL
+    const ul = document.createElement('ul');
+    ul.className = 'month-list';
+    ul.style.listStyle = 'none';
+    ul.style.margin = '0';
+    ul.style.padding = '0';
+
+    navWrapper.appendChild(ul);
+    container.appendChild(navWrapper);
+
+    // Populate the months
+    function renderMonths() {
+        ul.innerHTML = ''; // Clear
+        yearLabel.textContent = `${selectedYear}`;
+
+        months.forEach((month, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${month} ${selectedYear}`;
+            li.style.padding = '8px 12px';
+            li.style.cursor = 'pointer';
+
+            if (selectedYear >= currentYear) {
+                rightArrow.style.opacity = '0.3';
+                rightArrow.style.pointerEvents = 'none';
+            } else {
+                rightArrow.style.opacity = '1';
+                rightArrow.style.pointerEvents = 'auto';
+            }
+
+            // Disable future months if in current year
+            if (selectedYear === currentYear && index > currentMonthIndex) {
+                li.classList.add('disabled');
+                li.style.color = '#999';
+                li.style.pointerEvents = 'none';
+                li.style.background = '#f9f9f9';
+            }
+
+            li.addEventListener('click', () => {
+                labelDiv.textContent = `${month} ${selectedYear} (press to select a prev. month)`;
+                navWrapper.style.display = 'none';
+            });
+
+            ul.appendChild(li);
+        });
+    }
+
+    // Initial render
+    renderMonths();
+
+    // Toggle open/close
+    labelDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navWrapper.style.display = (navWrapper.style.display === 'none') ? 'block' : 'none';
+    });
+
+    // Outside click hides
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            navWrapper.style.display = 'none';
+        }
+    });
+
+    ul.addEventListener('click', async (e) => {
+        const clicked = e.target;
+
+        // Check if clicked element is an li and not disabled
+        if (clicked.tagName === 'LI' && !clicked.classList.contains('disabled')) {
+            // Extract month and year from li text
+            // li.textContent looks like: "January 2024"
+            const [monthName, yearStr] = clicked.textContent.split(' ');
+            const monthIndex = months.indexOf(monthName);
+            const year = parseInt(yearStr, 10);
+
+            // Build start/end dates
+            const startDate = new Date(year, monthIndex, 1);
+            const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+            const endDate = new Date(year, monthIndex, lastDay);
+
+            const startStr = JiraAPI.formatDate(startDate);
+            const endStr = JiraAPI.formatDate(endDate);
+
+            // Update CTA label
+            labelDiv.textContent = `${monthName} ${yearStr} (press to select a prev. month)`;
+
+            // Hide the month list
+            navWrapper.style.display = 'none';
+        try {
+            container.classList.add('disabled');
+            await JiraAPI.loadIssues(startStr, endStr)
+        } finally {
+            container.classList.remove('disabled');
+        }
+
+            // Update label
+            labelDiv.textContent = `${monthName} ${year} (press to select a prev. month)`;
+            navWrapper.style.display = 'none';
+        }
+    });
+
+    // Arrow navigation
+    leftArrow.addEventListener('click', () => {
+        selectedYear--;
+        renderMonths();
+    });
+
+    rightArrow.addEventListener('click', () => {
+        selectedYear++;
+        renderMonths();
+    });
 }
