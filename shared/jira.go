@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"net/url"
@@ -52,6 +53,14 @@ func SetAuthUrl(config JiraConfig) string {
 	params.Set("redirect_uri", config.RedirectUrl)
 	params.Set("response_type", "code")
 	params.Set("prompt", "consent")
+
+	uniq, err := uuid.NewV7()
+
+	if err != nil {
+		log.Println(err)
+	} else {
+		params.Set("state", uniq.String())
+	}
 
 	params.Set("scope", strings.Join(scopes, " "))
 
