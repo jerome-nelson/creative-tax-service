@@ -7,6 +7,7 @@ Why? Because I was tired of manually doing this every month.
   - User has the option to use an API token - in cases that the oauth connection doesn't work
 
 ### Requirements
+* Add `creative-tax.local` to your Hosts file
 * A JIRA Developer Application to be set up 
 * These Oauth scopes:
   - `"offline_access", "read:me", "read:project.avatar:jira", "read:filter:jira", "read:group:jira", "read:issue:jira", "read:attachment:jira", "read:comment:jira", "read:comment.property:jira", "read:field:jira", "read:issue-details:jira", "read:field.default-value:jira", "read:field.option:jira", "read:field:jira", "read:group:jira"`
