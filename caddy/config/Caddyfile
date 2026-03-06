@@ -1,11 +1,14 @@
 {
 	debug
+	auto_https disable_redirects
 }
 
 creative-tax.local {
       handle /cors/* {
         uri strip_prefix /cors
-        reverse_proxy cors_proxy:8080
+        reverse_proxy cors_proxy:8080 {
+            header_up X-Requested-With XMLHttpRequest
+        }
       }
 	handle_path /api* {
 		reverse_proxy jira

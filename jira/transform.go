@@ -3,6 +3,7 @@ package main
 import (
 	"JiraConnect/shared"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"google.golang.org/genai"
@@ -48,6 +49,13 @@ func handlePartiallyGeneratedIssueTransform(log *log.Logger, config LLMConfig) h
 
 		client, err := genai.NewClient(ctx, &genai.ClientConfig{
 			APIKey: config.ApiKey,
+			HTTPClient: &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true, // TODO: Fix certificate chain issue
+					},
+				},
+			},
 		})
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)

@@ -2,6 +2,7 @@ name: creative-tax-app
 services:
   cors_proxy:
     image: "redocly/cors-anywhere"
+    platform: linux/amd64
     networks:
       - ct_network
     environment:

@@ -1,4 +1,5 @@
 const JIRA_URI = "activecampaign.atlassian.net";
+const JIRA_API_GATEWAY = "https://api.atlassian.com";
 const IFRAME_PARAMS = `status=no,location=no,toolbar=no,menubar=no,width=600,height=800,popup=yes`;
 const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const longMonths = [
@@ -7,6 +8,7 @@ const longMonths = [
     "September", "October", "November", "December"
 ];
 const REFRESH_COUNT_KEY = 'refresh_token';
+const CLOUD_ID_KEY = 'jira_cloud_id';
 const transformAPI = {
     generateEntry: async (event, taskName, heading, description) => {
         const btn = event.target;
@@ -162,15 +164,26 @@ const JiraAPI = {
             const COOKIES = getCookies();
             const user = getSavedUser();
             const apiKey = sessionStorage.getItem('apiKey');
+            const cloudId = localStorage.getItem(CLOUD_ID_KEY);
+            
             let auth = `Bearer ${COOKIES.oauth_token}`;
-            let token = '';
+            let useDirectUrl = !cloudId || cloudId === 'direct' || (user.email && apiKey);
+            
             if (user.email && apiKey) {
-                token = btoa(`${user.email}:${apiKey}`);
+                const token = btoa(`${user.email}:${apiKey}`);
                 auth = "Basic " + token;
             }
 
-            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= \"${start}\" AND statusCategoryChangedDate <= \"${end}\" ORDER BY statusCategoryChangedDate DESC`);
-            const response = await fetch(`/cors/${JIRA_URI}/rest/api/3/search/jql?expand=renderedFields&fields=issuetype,summary,description,created,updated&jql=${jql}`, {
+            const jql = encodeURI(`assignee = currentUser() AND statusCategoryChangedDate >= "${start}" AND statusCategoryChangedDate <= "${end}" ORDER BY statusCategoryChangedDate DESC`);
+            
+            // Use direct URL for Basic Auth or if cloud ID is not available
+            const apiUrl = useDirectUrl
+                ? `/cors/${JIRA_URI}/rest/api/3/search/jql?expand=renderedFields&fields=issuetype,summary,description,created,updated&jql=${jql}`
+                : `${JIRA_API_GATEWAY}/ex/jira/${cloudId}/rest/api/3/search/jql?expand=renderedFields&fields=issuetype,summary,description,created,updated&jql=${jql}`;
+            
+            console.log('Fetching issues from:', useDirectUrl ? 'Direct URL' : 'API Gateway');
+            
+            const response = await fetch(apiUrl, {
                 method: 'GET',
                 headers: {
                     Accept: 'application/json',
@@ -204,6 +217,64 @@ const JiraAPI = {
             return getSavedUser();
         }
     },
+    fetchAccessibleResources: async () => {
+        try {
+            const COOKIES = getCookies();
+            
+            // Try the accessible-resources endpoint first
+            let response = await fetch(`${JIRA_API_GATEWAY}/oauth/token/accessible-resources`, {
+                headers: {
+                    Authorization: `Bearer ${COOKIES.oauth_token}`,
+                    Accept: 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                console.warn('Failed to fetch accessible-resources, trying alternative method');
+                
+                // Alternative: Try to get cloud ID from the Jira site directly
+                // This works if we know the site URL
+                const siteResponse = await fetch(`/cors/${JIRA_URI}/rest/api/3/serverInfo`, {
+                    headers: {
+                        Authorization: `Bearer ${COOKIES.oauth_token}`,
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (siteResponse.ok) {
+                    const siteInfo = await siteResponse.json();
+                    if (siteInfo.baseUrl) {
+                        // Extract cloud ID from baseUrl or use a known pattern
+                        // For now, we'll use the direct site URL approach
+                        console.log('Using direct site URL approach instead of API gateway');
+                        localStorage.setItem(CLOUD_ID_KEY, 'direct'); // Flag to use direct URLs
+                        return 'direct';
+                    }
+                }
+                
+                throw new Error('Failed to get accessible resources or site info');
+            }
+
+            const resources = await response.json();
+            
+            // Find the activecampaign resource or use the first one
+            const targetResource = resources.find(r => r.url.includes('activecampaign')) || resources[0];
+            
+            if (targetResource && targetResource.id) {
+                localStorage.setItem(CLOUD_ID_KEY, targetResource.id);
+                console.log('Cloud ID stored:', targetResource.id);
+                return targetResource.id;
+            }
+            
+            throw new Error('No accessible resources found');
+        } catch (e) {
+            console.error('Error fetching accessible resources:', e);
+            // Fallback to direct URL approach
+            localStorage.setItem(CLOUD_ID_KEY, 'direct');
+            return 'direct';
+        }
+    },
     refreshSession: async () => {
         try {
             const COOKIES = getCookies();
@@ -230,6 +301,11 @@ const JiraAPI = {
         if (!!COOKIES?.oauth_token) {
             await setAuth();
             document.dispatchEvent(new CustomEvent('auth-loaded'));
+        } else {
+            // Show login screen when not authenticated
+            document.getElementById("auth-container").style.display = "block";
+            document.getElementById("login").style.display = "block";
+            document.getElementById("authed").style.display = "none";
         }
     }
 }
@@ -239,6 +315,14 @@ const USER_KEY = 'user';
 
 async function setAuth() {
     const {name, email, picture} = await JiraAPI.fetchUser();
+    
+    // Try to fetch accessible resources, but don't fail if it doesn't work
+    try {
+        await JiraAPI.fetchAccessibleResources();
+    } catch (e) {
+        console.warn('Could not get accessible resources, will use direct URL method:', e);
+    }
+    
     window.document.title = `Hello ${name}` + window.document.title.replace('Log in', ' ');
     localStorage.setItem(USER_KEY, JSON.stringify({name, email, picture}));
     document.getElementById("auth-container").style.display = "block";
@@ -289,6 +373,7 @@ function deleteCookie(name) {
 function logout() {
     COOKIE_LIST.forEach(deleteCookie);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(CLOUD_ID_KEY);
 
     sessionStorage.removeItem('apiKey');
     document.getElementById("api-panel").style.display = 'block';

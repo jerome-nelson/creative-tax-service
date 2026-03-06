@@ -1,5 +1,8 @@
 FROM golang:1.24-alpine
 
+# Install CA certificates for HTTPS requests
+RUN apk --no-cache add ca-certificates
+
 ARG BUILD_NAME
 ARG SERVICE_PORT
 
