@@ -40,6 +40,8 @@ func ServerInstance(config *Config, log *log.Logger) http.Handler {
 }
 
 func GetConfig() *Config {
+	useKiro := os.Getenv("USE_KIRO_LLM") == "true"
+	
 	return &Config{
 		JiraConfig: shared.JiraConfig{
 			RedirectUrl: os.Getenv("REDIRECT_URL"),
@@ -55,7 +57,9 @@ func GetConfig() *Config {
 			AllowedHeaders: strings.Split(os.Getenv("ALLOWED_HEADERS"), ","),
 		},
 		LLMConfig: LLMConfig{
-			ApiKey: os.Getenv("LLM_API_KEY"),
+			ApiKey:  os.Getenv("LLM_API_KEY"),
+			KiroURL: os.Getenv("KIRO_API_URL"),
+			UseKiro: useKiro,
 		},
 	}
 }
